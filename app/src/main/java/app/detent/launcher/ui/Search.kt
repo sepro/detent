@@ -138,7 +138,7 @@ fun SearchSheet(s: LauncherState, pal: Palette) {
             }
             val n = s.dialApps.size
             val count = when {
-                s.web -> "results open in your search app"
+                s.web -> "results open in your browser"
                 q.isNotBlank() -> "${results.size} " + if (results.size == 1) "match" else "matches"
                 s.pick -> "tap an app for the quick button"
                 else -> "${results.size} apps · $n on dial"

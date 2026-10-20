@@ -77,7 +77,7 @@ interface Host {
     fun launchApp(app: AppEntry, bounds: Rect?)
     fun launchShortcut(info: ShortcutInfo, bounds: Rect?)
 
-    /** Hands [query] to the web search app of the phone, or to the browser when the phone has none. */
+    /** Opens the Google results for [query] in the default browser. */
     fun webSearch(query: String, bounds: Rect?)
     fun showAppInfo(app: AppEntry, bounds: Rect?)
     fun isDefaultHome(): Boolean

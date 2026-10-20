@@ -2,7 +2,6 @@ package app.detent.launcher
 
 import android.Manifest
 import android.app.ActivityOptions
-import android.app.SearchManager
 import android.app.role.RoleManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
@@ -130,12 +129,16 @@ class MainActivity : ComponentActivity(), Host {
     override fun launchShortcut(info: ShortcutInfo, bounds: Rect?) =
         launcherApps.startShortcut(info, bounds, reveal(bounds))
 
+    // The results open in the default browser, so an app that claims google.com links can't take them.
     override fun webSearch(query: String, bounds: Rect?) {
-        val opts = reveal(bounds)
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(webSearchUrl(query))).addCategory(Intent.CATEGORY_BROWSABLE)
+        val browser = Intent(Intent.ACTION_VIEW, Uri.parse("https://")).addCategory(Intent.CATEGORY_BROWSABLE)
+        packageManager.resolveActivity(browser, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
+            ?.takeIf { it != "android" }?.let { intent.setPackage(it) }
         try {
-            startActivity(Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, query), opts)
+            startActivity(intent, reveal(bounds))
         } catch (e: ActivityNotFoundException) {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webSearchUrl(query))), opts)
+            startActivity(intent.setPackage(null), reveal(bounds))
         }
     }
 
