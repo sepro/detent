@@ -190,7 +190,7 @@ private fun Home(s: LauncherState) {
         // The readout layout shows the letter in its readout.
         if (s.kind != Kind.Readout) ScrubLetter(s, pal)
         PressRing(s, pal)
-        SearchButton(s, pal)
+        AppsButton(s, pal)
         QuickButton(s, pal)
         HearLayer(s, pal)
         if (s.ob != null) Onboarding(s, pal, THEMES[live])
@@ -408,14 +408,14 @@ private fun Heard(s: LauncherState, pal: Palette, modifier: Modifier) {
 }
 
 @Composable
-private fun SearchButton(s: LauncherState, pal: Palette) {
+private fun AppsButton(s: LauncherState, pal: Palette) {
     val u = LocalUnits.current
     val homeIdle = s.ob == null && !s.search && s.hear == null && s.open == null
     val shown = homeIdle && s.scrub == null
     val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "searchAlpha")
     val dy by animateFloatAsState(if (shown) 0f else 8f, tween(300), label = "searchY")
     SideBox(s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dy * u.k }) {
-        // The voice button sits between search and the quick button.
+        // The voice button sits between apps and the quick button.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(u.dp(10f))) {
             if (s.left) VoiceButton(s, pal, homeIdle)
             val shape = RoundedCornerShape(50)
@@ -426,12 +426,14 @@ private fun SearchButton(s: LauncherState, pal: Palette) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(u.dp(10f)),
             ) {
+                // A 3 x 3 grid of squares.
                 Canvas(Modifier.size(u.dp(14f))) {
                     val k = u.k
-                    drawCircle(pal.fg, 4.25f * k, Offset(5f * k, 5f * k), style = Stroke(1.5f * k))
-                    drawLine(pal.fg, Offset(8.5f * k, 8.5f * k), Offset(12.74f * k, 12.74f * k), strokeWidth = 1.5f * k)
+                    for (i in 0..2) for (j in 0..2) {
+                        drawRoundRect(pal.fg, Offset(i * 5.4f * k, j * 5.4f * k), Size(3.2f * k, 3.2f * k), CornerRadius(.6f * k))
+                    }
                 }
-                Txt("search", 13f, pal.fg)
+                Txt("apps", 13f, pal.fg)
             }
             if (!s.left) VoiceButton(s, pal, homeIdle)
         }
