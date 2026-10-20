@@ -1,5 +1,6 @@
 # Builds the APK on each push and pull request.
-# A tag that starts with "v" also publishes a GitHub release with detent.apk.
+# A tag that starts with "v" also publishes a GitHub release with detent.apk. A release made on the
+# GitHub website creates its tag, so that release gets the APK too.
 name: build
 
 on:
@@ -46,6 +47,9 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "DETENT_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
+      - name: Run the unit tests
+        run: ./gradlew testDebugUnitTest
+
       - name: Build the APK
         env:
           DETENT_KEYSTORE_PASSWORD: ${{ secrets.DETENT_KEYSTORE_PASSWORD }}
@@ -65,5 +69,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" detent.apk docs/media/detent-promo.mp4 \
-            --title "Detent $VERSION" --generate-notes --verify-tag
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" detent.apk docs/media/detent-promo.mp4 --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" detent.apk docs/media/detent-promo.mp4 \
+              --title "Detent $VERSION" --generate-notes --verify-tag
+          fi
