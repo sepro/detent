@@ -75,7 +75,9 @@ fun SearchSheet(s: LauncherState, pal: Palette) {
     ) {
         val focus = remember { FocusRequester() }
         val kb = LocalSoftwareKeyboardController.current
+        // The keyboard waits for a tap on the field, so the whole list stays in view.
         LaunchedEffect(Unit) {
+            if (!s.typeSearch) return@LaunchedEffect
             delay(80)
             runCatching { focus.requestFocus() }
             kb?.show()

@@ -213,6 +213,10 @@ class LauncherState(
         private set
     var query by mutableStateOf("")
 
+    /** True when the search field takes the focus and shows the keyboard as the sheet opens. */
+    var typeSearch by mutableStateOf(false)
+        private set
+
     /** True while the search sheet picks the app for the quick button. */
     var pick by mutableStateOf(false)
         private set
@@ -1128,10 +1132,12 @@ class LauncherState(
 
     // Search.
 
-    fun openSearch() {
+    /** Opens search. [type] puts the cursor in the field, as when `/` opens search from a hardware keyboard. */
+    fun openSearch(type: Boolean = false) {
         tap()
         query = ""
         pick = false
+        typeSearch = type
         recentKeys = prefs.recent
         search = true
     }
@@ -1401,6 +1407,7 @@ class LauncherState(
         fb.heavy()
         query = ""
         pick = true
+        typeSearch = false
         recentKeys = prefs.recent
         search = true
     }
@@ -1574,7 +1581,7 @@ class LauncherState(
             Key.DirectionUp, Key.K -> stepBy(-1)
             Key.Enter, Key.L, Key.DirectionRight -> if (o != null) obNext() else launchSelected()
             Key.Escape -> if (o != null) obBack() else return false
-            Key.Slash -> if (o == null) openSearch() else return false
+            Key.Slash -> if (o == null) openSearch(type = true) else return false
             else -> return false
         }
         return true
