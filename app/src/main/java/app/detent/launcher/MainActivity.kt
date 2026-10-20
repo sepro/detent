@@ -2,6 +2,7 @@ package app.detent.launcher
 
 import android.Manifest
 import android.app.ActivityOptions
+import android.app.SearchManager
 import android.app.role.RoleManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
@@ -11,6 +12,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.graphics.Color
 import android.graphics.Rect
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -127,6 +129,15 @@ class MainActivity : ComponentActivity(), Host {
 
     override fun launchShortcut(info: ShortcutInfo, bounds: Rect?) =
         launcherApps.startShortcut(info, bounds, reveal(bounds))
+
+    override fun webSearch(query: String, bounds: Rect?) {
+        val opts = reveal(bounds)
+        try {
+            startActivity(Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, query), opts)
+        } catch (e: ActivityNotFoundException) {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(webSearchUrl(query))), opts)
+        }
+    }
 
     override fun showAppInfo(app: AppEntry, bounds: Rect?) =
         launcherApps.startAppDetailsActivity(app.component, app.user, bounds, reveal(bounds))

@@ -76,6 +76,9 @@ class Toast(val id: Long, val text: String, val undo: (() -> Unit)?)
 interface Host {
     fun launchApp(app: AppEntry, bounds: Rect?)
     fun launchShortcut(info: ShortcutInfo, bounds: Rect?)
+
+    /** Hands [query] to the web search app of the phone, or to the browser when the phone has none. */
+    fun webSearch(query: String, bounds: Rect?)
     fun showAppInfo(app: AppEntry, bounds: Rect?)
     fun isDefaultHome(): Boolean
     fun requestHome()
@@ -132,7 +135,8 @@ object Step {
     const val THEME = 2
     const val APPS = 3
     const val FEEL = 4
-    const val READY = 5
+    const val DOCK = 5
+    const val READY = 6
 }
 
 class LauncherState(
@@ -217,6 +221,10 @@ class LauncherState(
     var typeSearch by mutableStateOf(false)
         private set
 
+    /** True while the search sheet searches the web. */
+    var web by mutableStateOf(false)
+        private set
+
     /** True while the search sheet picks the app for the quick button. */
     var pick by mutableStateOf(false)
         private set
@@ -249,6 +257,10 @@ class LauncherState(
     var dots by mutableStateOf(prefs.dots)
         private set
     var lockWall by mutableStateOf(prefs.lockWall)
+        private set
+    var mic by mutableStateOf(prefs.mic)
+        private set
+    var corner by mutableStateOf(prefs.corner)
         private set
     /** Path of the user's own wallpaper, or null for the theme wallpaper. */
     var customWall by mutableStateOf(prefs.customWall)
@@ -371,7 +383,7 @@ class LauncherState(
             hear != null -> closeVoice()
             menu != null -> closeMenu()
             search -> closeSearch()
-            ob in Step.SHAPE..Step.FEEL -> obBack()
+            ob in Step.SHAPE..Step.DOCK -> obBack()
         }
     }
 
@@ -909,7 +921,7 @@ class LauncherState(
     fun obNext() {
         tap()
         when (val o = ob ?: return) {
-            Step.FEEL -> goTo(if (obEdit) null else Step.READY)
+            Step.DOCK -> goTo(if (obEdit) null else Step.READY)
             Step.READY -> goTo(null)
             else -> goTo(o + 1)
         }
@@ -1000,6 +1012,18 @@ class LauncherState(
             dots = !dots
             prefs.dots = dots
         }
+    }
+
+    fun toggleMic() {
+        tap()
+        mic = !mic
+        prefs.mic = mic
+    }
+
+    fun pickCorner(c: Corner) {
+        tap()
+        corner = c
+        prefs.corner = c
     }
 
     fun requestHome() {
@@ -1137,6 +1161,7 @@ class LauncherState(
         tap()
         query = ""
         pick = false
+        web = false
         typeSearch = type
         recentKeys = prefs.recent
         search = true
@@ -1186,6 +1211,7 @@ class LauncherState(
     }
 
     fun searchEnter() {
+        if (web) return webSearch(searchFieldY, 26f)
         val app = matches(query).firstOrNull() ?: return
         if (pick) setQuick(app) else openFromSearch(app, 200f)
     }
@@ -1201,6 +1227,32 @@ class LauncherState(
 
     private fun markRecent(app: AppEntry) {
         prefs.recent = (listOf(app.key) + prefs.recent.filter { it != app.key }).take(RECENT_KEEP)
+    }
+
+    // Web search: the corner button can search the web in place of the quick app.
+
+    /** The centre of the search field in design units. A web search lifts off from here. */
+    var searchFieldY = 140f
+
+    /** A tap on the web search button. The keyboard comes up, ready for the words. */
+    fun openWeb() {
+        if (blocked()) return
+        tap()
+        query = ""
+        pick = false
+        web = true
+        typeSearch = true
+        search = true
+    }
+
+    /**
+     * Searches the web for the query. [y] is the centre of the row or the field that started it, and [size] is
+     * its text size, in design units.
+     */
+    fun webSearch(y: Float, size: Float = 16f) {
+        val q = query.trim()
+        if (q.isEmpty()) return
+        openApp(q, null, null, Pose(28f, y, 0f, size / 44f, 0f), "web search", false) { host.webSearch(q, it) }
     }
 
     // Voice: say the name of an app to open it. The home screen listens in the style of its layout.
@@ -1407,6 +1459,7 @@ class LauncherState(
         fb.heavy()
         query = ""
         pick = true
+        web = false
         typeSearch = false
         recentKeys = prefs.recent
         search = true

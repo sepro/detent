@@ -25,6 +25,19 @@ fun mod(a: Float, n: Float) = ((a % n) + n) % n
 enum class Markers { Double, Ticks, Nodes, Dots }
 enum class Side { Right, Left }
 
+/** What the button in the bottom corner on the dial side holds: one app, a web search, or nothing. */
+enum class Corner {
+    Quick, Web, None;
+
+    companion object {
+        /** The corner saved as [name]. Without a valid name, the corner holds the quick app. */
+        fun of(name: String?) = entries.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: Quick
+    }
+}
+
+/** A web search in the browser, for phones that have no app for web searches. */
+fun webSearchUrl(query: String) = "https://www.google.com/search?q=" + java.net.URLEncoder.encode(query.trim(), "UTF-8")
+
 /**
  * Radial layouts draw a dial over the wallpaper. The other kinds draw the whole screen as one dot grid:
  * field puts the names on a dial of dots, lens puts every app on a column of dots, and readout shows the

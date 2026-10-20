@@ -98,6 +98,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
+import app.detent.launcher.Corner
 import app.detent.launcher.Hear
 import app.detent.launcher.Ease
 import app.detent.launcher.Kind
@@ -191,7 +192,11 @@ private fun Home(s: LauncherState) {
         if (s.kind != Kind.Readout) ScrubLetter(s, pal)
         PressRing(s, pal)
         AppsButton(s, pal)
-        QuickButton(s, pal)
+        when (s.corner) {
+            Corner.Quick -> QuickButton(s, pal)
+            Corner.Web -> WebButton(s, pal)
+            Corner.None -> {}
+        }
         HearLayer(s, pal)
         if (s.ob != null) Onboarding(s, pal, THEMES[live])
         QuickMenuView(s, pal)
@@ -420,7 +425,7 @@ private fun AppsButton(s: LauncherState, pal: Palette) {
     SideBox(s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dy * u.k }) {
         // The voice button sits between apps and the quick button.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(u.dp(10f))) {
-            if (s.left) VoiceButton(s, pal, homeIdle)
+            if (s.left && s.mic) VoiceButton(s, pal, homeIdle)
             val shape = RoundedCornerShape(50)
             Row(
                 Modifier.height(u.dp(44f)).clip(shape).background(pal.btnBg).border(u.dp(1f), pal.rim2, shape)
@@ -438,7 +443,7 @@ private fun AppsButton(s: LauncherState, pal: Palette) {
                 }
                 Txt("apps", 13f, pal.fg)
             }
-            if (!s.left) VoiceButton(s, pal, homeIdle)
+            if (!s.left && s.mic) VoiceButton(s, pal, homeIdle)
         }
     }
 }
@@ -514,6 +519,40 @@ private fun QuickButton(s: LauncherState, pal: Palette) {
                 maxLines = 1,
             )
         }
+    }
+}
+
+/** The web search button takes the place of the quick button. A tap opens search for the web. */
+@Composable
+private fun WebButton(s: LauncherState, pal: Palette) {
+    val u = LocalUnits.current
+    val homeIdle = s.ob == null && !s.search && s.hear == null && s.open == null
+    val shown = homeIdle && s.scrub == null
+    val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "webAlpha")
+    val dy by animateFloatAsState(if (shown) 0f else 8f, tween(300), label = "webY")
+    SideBox(!s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dy * u.k }) {
+        val shape = RoundedCornerShape(50)
+        Row(
+            Modifier.height(u.dp(44f)).clip(shape).background(pal.btnBg).border(u.dp(1f), pal.rim2, shape)
+                .tap(enabled = homeIdle) { s.openWeb() }
+                .padding(start = u.dp(14f), end = u.dp(18f)),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(u.dp(10f)),
+        ) {
+            SearchIcon(pal.fg)
+            Txt("search", 13f, pal.fg)
+        }
+    }
+}
+
+/** A magnifying glass. */
+@Composable
+fun SearchIcon(color: Color) {
+    val u = LocalUnits.current
+    Canvas(Modifier.size(u.dp(14f))) {
+        val k = u.k
+        drawCircle(color, 4.25f * k, Offset(5f * k, 5f * k), style = Stroke(1.5f * k))
+        drawLine(color, Offset(8.5f * k, 8.5f * k), Offset(12.74f * k, 12.74f * k), strokeWidth = 1.5f * k)
     }
 }
 

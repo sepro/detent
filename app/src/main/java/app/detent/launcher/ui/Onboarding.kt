@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import app.detent.launcher.Corner
 import app.detent.launcher.Ease
 import app.detent.launcher.Kind
 import app.detent.launcher.LAYOUTS
@@ -48,12 +49,13 @@ private class Copy(val counter: String, val title: String, val body: String)
 
 private fun copy(step: Int, custom: Boolean, grid: Boolean) = when (step) {
     Step.WELCOME -> Copy("", "dial", "your apps sit on a wheel at the edge. turn it to choose, tap to open.")
-    Step.SHAPE -> Copy("1 / 4", "shape", "pick a layout and a side, then turn the dial to try it.")
-    Step.THEME -> if (grid) Copy("2 / 4", "theme", "turn the dial to pick the colours of the grid.")
-    else if (custom) Copy("2 / 4", "theme", "turn the dial to pick the colours. your wallpaper stays.")
-    else Copy("2 / 4", "theme", "turn the dial to try one. each brings its own wallpaper.")
-    Step.APPS -> Copy("3 / 4", "apps", "pick what goes on the dial. the rest stay one search away.")
-    Step.FEEL -> Copy("4 / 4", "feel", "a click and a tick for every detent. dots mark new notifications. the lock screen can use the theme.")
+    Step.SHAPE -> Copy("1 / 5", "shape", "pick a layout and a side, then turn the dial to try it.")
+    Step.THEME -> if (grid) Copy("2 / 5", "theme", "turn the dial to pick the colours of the grid.")
+    else if (custom) Copy("2 / 5", "theme", "turn the dial to pick the colours. your wallpaper stays.")
+    else Copy("2 / 5", "theme", "turn the dial to try one. each brings its own wallpaper.")
+    Step.APPS -> Copy("3 / 5", "apps", "pick what goes on the dial. the rest stay one search away.")
+    Step.FEEL -> Copy("4 / 5", "feel", "a click and a tick for every detent. dots mark new notifications. the lock screen can use the theme.")
+    Step.DOCK -> Copy("5 / 5", "dock", "the mic opens an app by name. the corner holds an app, a web search, or nothing.")
     else -> Copy("", "ready", "hold the clock to change your setup. hold an app for shortcuts, or the dial to jump by letter.")
 }
 
@@ -80,7 +82,7 @@ fun Onboarding(s: LauncherState, pal: Palette, theme: ThemeDef) {
     val controlsY = u.navY - 170f
     Box(Modifier.fillMaxSize()) {
         if (step == Step.APPS) Box(Modifier.fillMaxSize().background(pal.veil))
-        if (step == Step.SHAPE || step == Step.THEME || step == Step.FEEL) {
+        if (step == Step.SHAPE || step == Step.THEME || step == Step.FEEL || step == Step.DOCK) {
             Box(
                 Modifier.fillMaxWidth().place(u, 0f, controlsY - 70f).height(u.dp(u.hd - controlsY + 70f))
                     .background(Brush.verticalGradient(0f to pal.bg.copy(alpha = 0f), .3f to pal.bg, 1f to pal.bg)),
@@ -134,6 +136,16 @@ fun Onboarding(s: LauncherState, pal: Palette, theme: ThemeDef) {
                     Chip("dots", s.dots && s.notifAccess, pal, { s.toggleDots() })
                     Chip("lock screen", s.lockWall, pal, { s.toggleLockWall() })
                 }
+                Step.DOCK -> {
+                    Row(horizontalArrangement = gap) {
+                        Chip("mic", s.mic, pal, { s.toggleMic() })
+                    }
+                    Row(horizontalArrangement = gap) {
+                        Chip("quick app", s.corner == Corner.Quick, pal, { s.pickCorner(Corner.Quick) })
+                        Chip("web search", s.corner == Corner.Web, pal, { s.pickCorner(Corner.Web) })
+                        Chip("none", s.corner == Corner.None, pal, { s.pickCorner(Corner.None) })
+                    }
+                }
                 Step.READY -> if (!s.isHome) Row(Modifier.padding(top = u.dp(42f))) {
                     Chip("set as home app", false, pal, { s.requestHome() })
                 }
@@ -147,6 +159,11 @@ fun Onboarding(s: LauncherState, pal: Palette, theme: ThemeDef) {
                     s.dots && !s.notifAccess -> "dots need notification access"
                     s.lockWall -> "the lock screen uses the theme"
                     else -> ""
+                }
+                Step.DOCK -> when (s.corner) {
+                    Corner.Quick -> "hold the quick button to change its app"
+                    Corner.Web -> "the corner button searches the web"
+                    Corner.None -> "the corner stays empty"
                 }
                 Step.READY -> if (s.isHome) "detent is your home app" else ""
                 else -> ""
@@ -194,7 +211,7 @@ private fun Nav(s: LauncherState, pal: Palette, step: Int) {
     val back = if (step == Step.SHAPE && s.obEdit) "cancel" else "back"
     val next = when (step) {
         Step.WELCOME -> "begin"
-        Step.FEEL -> if (s.obEdit) "done" else "next"
+        Step.DOCK -> if (s.obEdit) "done" else "next"
         Step.READY -> "go home"
         else -> "next"
     }

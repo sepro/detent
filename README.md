@@ -34,13 +34,14 @@ adb install detent.apk
 | Tap the dial while it turns | The dial stops. No app opens. |
 | Hold the dial | Letters replace the apps. Slide to a letter and release to jump to it. |
 | Hold the app in the notch | A menu shows the app shortcuts, `app info`, and `remove from dial`. |
-| Hold the clock or an empty area | The setup opens: shape, theme, apps, and feel. |
+| Hold the clock or an empty area | The setup opens: shape, theme, apps, feel, and dock. |
 | Tap `apps` | Search all your apps. The 5 apps that you last opened from search sit at the top. Tap the cross on a recent app to remove it, or tap `clear`. Tap `+ dial` to add an app to the dial. |
 | Tap the quick button | The quick app opens. If the button has no app, pick one. |
 | Hold the quick button | Pick a different quick app, or tap `clear`. |
+| Tap `search` in the corner | Type words and tap go. The web search app of your phone shows the results. |
 | Tap the mic button and say an app name | The dial swells with your voice, and your words show at the top. When the words name one app, the dial turns to it and the app opens. If not, search opens with the words. |
 
-The quick button sits in the bottom corner on the dial side. It holds one app that you need fast, such as the camera. The mic button sits between `apps` and the quick button.
+The quick button sits in the bottom corner on the dial side. It holds one app that you need fast, such as the camera. The mic button sits between `apps` and the quick button. On the `dock` step, you can hide the mic button, and put a web `search` button or nothing in the corner.
 
 With a hardware keyboard, `j` and `k` turn the dial. `l` or `Enter` opens the app. `/` opens search. `Esc` goes back.
 
@@ -102,6 +103,15 @@ The `feel` step has 4 switches:
 | `haptics` | Gives a light tick for each app and a firmer tick for each letter. It follows the system touch feedback setting. |
 | `dots` | Shows an accent dot on apps with new notifications. The dot clears when you open the app. This switch needs notification access. |
 | `lock screen` | Sets the lock screen and the system wallpaper to the theme. On the grid layouts, it sets the dot grid. Android then takes the lock screen colours from it. |
+
+The `dock` step sets the buttons at the bottom of the home screen:
+
+| Choice | What it does |
+| --- | --- |
+| `mic` | Shows the mic button. |
+| `quick app` | The corner button opens one app. |
+| `web search` | The corner button searches the web. |
+| `none` | The corner stays empty. |
 
 If Android shows "Restricted setting" when you allow notification access, open the app info for Detent. Tap ⋮, then `Allow restricted settings`. Then try again.
 

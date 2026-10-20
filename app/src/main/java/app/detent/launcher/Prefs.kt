@@ -53,6 +53,16 @@ class Prefs(ctx: Context) {
         get() = sp.getString("customWall", null)?.takeIf { java.io.File(it).exists() }
         set(v) = sp.edit { putString("customWall", v) }
 
+    /** Shows the voice button on the home screen. */
+    var mic: Boolean
+        get() = sp.getBoolean("mic", true)
+        set(v) = sp.edit { putBoolean("mic", v) }
+
+    /** What the corner button holds. */
+    var corner: Corner
+        get() = Corner.of(sp.getString("corner", null))
+        set(v) = sp.edit { putString("corner", v.name.lowercase()) }
+
     /** Key of the app on the quick button, or null when the button has no app. */
     var quick: String?
         get() = sp.getString("quick", null)

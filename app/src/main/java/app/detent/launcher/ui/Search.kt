@@ -96,6 +96,7 @@ fun SearchSheet(s: LauncherState, pal: Palette) {
                     value = q,
                     onValueChange = { s.query = it },
                     modifier = Modifier.weight(1f).height(u.dp(52f)).focusRequester(focus)
+                        .onGloballyPositioned { s.searchFieldY = (it.positionInRoot().y + it.size.height / 2f) / u.k }
                         .onPreviewKeyEvent {
                             if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
                                 s.closeSearch()
@@ -121,7 +122,12 @@ fun SearchSheet(s: LauncherState, pal: Palette) {
                             },
                             contentAlignment = Alignment.CenterStart,
                         ) {
-                            if (q.isEmpty()) Txt(if (s.pick) "pick a quick app" else "search apps", 26f, pal.muted, weight = FontWeight.Light, spacing = -.03f, maxLines = 1)
+                            val hint = when {
+                                s.pick -> "pick a quick app"
+                                s.web -> "search the web"
+                                else -> "search apps"
+                            }
+                            if (q.isEmpty()) Txt(hint, 26f, pal.muted, weight = FontWeight.Light, spacing = -.03f, maxLines = 1)
                             inner()
                         }
                     },
@@ -132,6 +138,7 @@ fun SearchSheet(s: LauncherState, pal: Palette) {
             }
             val n = s.dialApps.size
             val count = when {
+                s.web -> "results open in your search app"
                 q.isNotBlank() -> "${results.size} " + if (results.size == 1) "match" else "matches"
                 s.pick -> "tap an app for the quick button"
                 else -> "${results.size} apps · $n on dial"
@@ -151,6 +158,10 @@ fun SearchSheet(s: LauncherState, pal: Palette) {
                 Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = PaddingValues(start = u.dp(12f), end = u.dp(12f), bottom = u.dp(48f)),
             ) {
+                if (s.web) {
+                    if (q.isNotBlank()) item(key = "web") { WebRow(s, pal, q.trim()) }
+                    return@LazyColumn
+                }
                 if (q.isBlank() && recent.isNotEmpty()) {
                     item(key = "recent") { Section("recent", pal, if (s.pick) null else "clear") { s.clearRecent() } }
                     itemsIndexed(recent, key = { _, a -> "recent " + a.key }) { _, app ->
@@ -221,6 +232,25 @@ private fun ResultRow(s: LauncherState, pal: Palette, app: AppEntry, highlight: 
                 ) { Txt("+ dial", 11f, pal.fg, maxLines = 1) }
             }
         }
+    }
+}
+
+/** The one row of a web search. A tap searches the web for [q], like the go key. */
+@Composable
+private fun WebRow(s: LauncherState, pal: Palette, q: String) {
+    val u = LocalUnits.current
+    var centre by remember { mutableFloatStateOf(0f) }
+    Row(
+        Modifier.fillMaxWidth().height(u.dp(48f)).clip(RoundedCornerShape(u.dp(10f))).background(pal.hover)
+            .onGloballyPositioned { centre = it.positionInRoot().y + it.size.height / 2f }
+            .tap { s.webSearch(centre / u.k) }
+            .padding(horizontal = u.dp(16f)),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(u.dp(12f)),
+    ) {
+        SearchIcon(pal.muted)
+        Txt(q, 16f, pal.fg, Modifier.weight(1f), maxLines = 1)
+        Txt("web search", 11f, pal.muted, spacing = .04f)
     }
 }
 
