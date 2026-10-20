@@ -17,8 +17,13 @@ class ThemeTest {
     @Test fun koiUsesTheSeproColours() {
         assertEquals(Color(0xFF121212), koi.bg)
         assertEquals(Color(0xFFD8E0DC), koi.fg)
-        assertEquals(Color(0xFF3C7882), koi.accent)
+        assertEquals(Color(0xFF5FA3AC), koi.accent)
     }
+
+    @Test fun koiButtonsHaveGrayText() = assertEquals(Color(0xFF999E9B), Palette(koi).btnFg)
+
+    @Test fun otherThemesKeepTheirButtonText() =
+        THEMES.filter { it.name != "koi-watercolor" }.forEach { assertEquals(it.name, it.fg, Palette(it).btnFg) }
 
     // The setup saves the theme by its place in the list, so new themes must not move the old ones.
     @Test fun oldThemesKeepTheirPlace() {

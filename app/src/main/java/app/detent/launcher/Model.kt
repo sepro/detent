@@ -105,11 +105,14 @@ class ThemeDef(
     hand: Long = 0xFF504945,
     /** Wallpaper crop for a left-hand dial, when it differs. */
     val wallLeft: String? = null,
+    /** Text and icons on the home buttons, when they differ from the foreground. */
+    btnFg: Long? = null,
 ) {
     val bg = Color(bg)
     val fg = Color(fg)
     val accent = Color(accent)
     val hand = Color(hand)
+    val btnFg = btnFg?.let { Color(it) }
 }
 
 private fun phone(name: String, light: Boolean, bg: Long, fg: Long, acc: Long, hand: Long) =
@@ -150,7 +153,7 @@ val THEMES = listOf(
     ThemeDef("vantablack", "omarchy", false, 0xFF000000, 0xFFFFFFFF, 0xFF8D8D8D, null, 0xFF505050),
     omarchy("white", true, 0xFFFFFFFF, 0xFF000000, 0xFF6E6E6E),
     // New themes go at the end. The setup saves the theme by its place in this list.
-    ThemeDef("koi-watercolor", "sepro", false, 0xFF121212, 0xFFD8E0DC, 0xFF3C7882, "walls/koi-watercolor.webp"),
+    ThemeDef("koi-watercolor", "sepro", false, 0xFF121212, 0xFFD8E0DC, 0xFF5FA3AC, "walls/koi-watercolor.webp", btnFg = 0xFF999E9B),
 )
 
 /** The theme groups in dial order. The theme step has a chip for each. */
@@ -184,6 +187,7 @@ class Palette(t: ThemeDef) {
     val sheet = mix(fg, bg, .05f)
     val card = mix(fg, bg, .1f)
     val btnBg = bg.copy(alpha = .55f)
+    val btnFg = t.btnFg ?: fg
     val hand = t.hand
     val veil = bg.copy(alpha = .62f)
     val chipBg = bg.copy(alpha = .5f)

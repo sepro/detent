@@ -438,10 +438,10 @@ private fun AppsButton(s: LauncherState, pal: Palette) {
                 Canvas(Modifier.size(u.dp(14f))) {
                     val k = u.k
                     for (i in 0..2) for (j in 0..2) {
-                        drawRoundRect(pal.fg, Offset(i * 5.4f * k, j * 5.4f * k), Size(3.2f * k, 3.2f * k), CornerRadius(.6f * k))
+                        drawRoundRect(pal.btnFg, Offset(i * 5.4f * k, j * 5.4f * k), Size(3.2f * k, 3.2f * k), CornerRadius(.6f * k))
                     }
                 }
-                Txt("apps", 13f, pal.fg)
+                Txt("apps", 13f, pal.btnFg)
             }
             if (!s.left && s.mic) VoiceButton(s, pal, homeIdle)
         }
@@ -467,9 +467,9 @@ private fun VoiceButton(s: LauncherState, pal: Palette, idle: Boolean) {
         Canvas(Modifier.size(u.dp(14f))) {
             val k = u.k
             val line = Stroke(1.5f * k)
-            drawRoundRect(pal.fg, Offset(4.5f * k, .75f * k), Size(5f * k, 8f * k), CornerRadius(2.5f * k), style = line)
-            drawArc(pal.fg, 0f, 180f, false, Offset(2f * k, 3.5f * k), Size(10f * k, 8f * k), style = line)
-            drawLine(pal.fg, Offset(7f * k, 11.5f * k), Offset(7f * k, 13.5f * k), strokeWidth = 1.5f * k)
+            drawRoundRect(pal.btnFg, Offset(4.5f * k, .75f * k), Size(5f * k, 8f * k), CornerRadius(2.5f * k), style = line)
+            drawArc(pal.btnFg, 0f, 180f, false, Offset(2f * k, 3.5f * k), Size(10f * k, 8f * k), style = line)
+            drawLine(pal.btnFg, Offset(7f * k, 11.5f * k), Offset(7f * k, 13.5f * k), strokeWidth = 1.5f * k)
         }
     }
 }
@@ -500,18 +500,18 @@ private fun QuickButton(s: LauncherState, pal: Palette) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(u.dp(10f)),
         ) {
-            val dot = if (app != null && s.hasDot(app)) pal.accent else pal.fg
+            val dot = if (app != null && s.hasDot(app)) pal.accent else pal.btnFg
             Canvas(Modifier.size(u.dp(14f))) {
                 val k = u.k
                 if (app == null) {
-                    drawLine(pal.fg, Offset(2f * k, 7f * k), Offset(12f * k, 7f * k), strokeWidth = 1.5f * k)
-                    drawLine(pal.fg, Offset(7f * k, 2f * k), Offset(7f * k, 12f * k), strokeWidth = 1.5f * k)
+                    drawLine(pal.btnFg, Offset(2f * k, 7f * k), Offset(12f * k, 7f * k), strokeWidth = 1.5f * k)
+                    drawLine(pal.btnFg, Offset(7f * k, 2f * k), Offset(7f * k, 12f * k), strokeWidth = 1.5f * k)
                 } else {
                     drawCircle(dot, 3.5f * k, Offset(7f * k, 7f * k))
                 }
             }
             Txt(
-                app?.display ?: "quick app", 13f, pal.fg,
+                app?.display ?: "quick app", 13f, pal.btnFg,
                 Modifier.onGloballyPositioned {
                     val p = it.positionInRoot()
                     label = Offset(p.x / u.k, (p.y + it.size.height / 2f) / u.k)
@@ -539,8 +539,8 @@ private fun WebButton(s: LauncherState, pal: Palette) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(u.dp(10f)),
         ) {
-            SearchIcon(pal.fg)
-            Txt("search", 13f, pal.fg)
+            SearchIcon(pal.btnFg)
+            Txt("search", 13f, pal.btnFg)
         }
     }
 }
