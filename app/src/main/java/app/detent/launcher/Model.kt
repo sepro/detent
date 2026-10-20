@@ -136,7 +136,12 @@ val THEMES = listOf(
     omarchy("tokyo-night", false, 0xFF1A1B26, 0xFFA9B1D6, 0xFF7AA2F7),
     ThemeDef("vantablack", "omarchy", false, 0xFF000000, 0xFFFFFFFF, 0xFF8D8D8D, null, 0xFF505050),
     omarchy("white", true, 0xFFFFFFFF, 0xFF000000, 0xFF6E6E6E),
+    // New themes go at the end. The setup saves the theme by its place in this list.
+    ThemeDef("koi-watercolor", "sepro", false, 0xFF121212, 0xFFD8E0DC, 0xFF3C7882, "walls/koi-watercolor.webp"),
 )
+
+/** The theme groups in dial order. The theme step has a chip for each. */
+val THEME_GROUPS = THEMES.map { it.group }.distinct()
 
 val THEME_NAMES = THEMES.map { it.name }
 

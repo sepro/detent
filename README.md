@@ -77,7 +77,7 @@ On the grid layouts, an app opens with a ripple of dots from the notch.
 
 The dial can sit on the right or the left edge.
 
-Detent has 27 themes. The 4 phone themes are dusk, ember, signal, and paper. They use a tinted dot-hand art. The 23 Omarchy themes each bring their own wallpaper. On the theme step, the colours change on each click of the dial. The wallpaper loads when the dial stops.
+Detent has 28 themes. The 4 phone themes are dusk, ember, signal, and paper. They use a tinted dot-hand art. The 23 Omarchy themes each bring their own wallpaper. The sepro group holds koi-watercolor, a dark teal theme with a koi pond wallpaper. On the theme step, the colours change on each click of the dial. The wallpaper loads when the dial stops.
 
 ### Use your own wallpaper
 

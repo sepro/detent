@@ -40,6 +40,7 @@ import app.detent.launcher.LauncherState
 import app.detent.launcher.Palette
 import app.detent.launcher.Side
 import app.detent.launcher.Step
+import app.detent.launcher.THEME_GROUPS
 import app.detent.launcher.ThemeDef
 import kotlinx.coroutines.launch
 
@@ -117,8 +118,9 @@ fun Onboarding(s: LauncherState, pal: Palette, theme: ThemeDef) {
                 }
                 Step.THEME -> {
                     Row(horizontalArrangement = gap) {
-                        Chip("phone", theme.group == "phone", pal, { s.jumpGroup("phone") }, weight = FontWeight.Medium)
-                        Chip("omarchy", theme.group == "omarchy", pal, { s.jumpGroup("omarchy") }, weight = FontWeight.Medium)
+                        THEME_GROUPS.forEach { g ->
+                            Chip(g, theme.group == g, pal, { s.jumpGroup(g) }, weight = FontWeight.Medium)
+                        }
                     }
                     // The grid layouts have no wallpaper.
                     if (!s.layout.grid) Row(horizontalArrangement = gap) {
