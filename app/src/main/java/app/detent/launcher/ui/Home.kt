@@ -290,12 +290,15 @@ private fun GestureLayer(s: LauncherState) {
     Box(
         Modifier.fillMaxSize()
             // The dial sits on a screen edge. Keep the system back swipe off the rows around the notch.
-            .systemGestureExclusion { c ->
-                val w = c.size.width.toFloat()
-                val top = (mid - 110f) * u.k
-                val bottom = (mid + 110f) * u.k
-                if (s.left) Rect(0f, top, 56f * u.k, bottom) else Rect(w - 56f * u.k, top, w, bottom)
-            }
+            // Search covers the dial, so there the back swipe works on the whole edge.
+            .then(
+                if (s.search) Modifier else Modifier.systemGestureExclusion { c ->
+                    val w = c.size.width.toFloat()
+                    val top = (mid - 110f) * u.k
+                    val bottom = (mid + 110f) * u.k
+                    if (s.left) Rect(0f, top, 56f * u.k, bottom) else Rect(w - 56f * u.k, top, w, bottom)
+                },
+            )
             .pointerInput(s) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
