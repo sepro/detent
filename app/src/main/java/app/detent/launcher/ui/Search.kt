@@ -159,7 +159,14 @@ fun SearchSheet(s: LauncherState, pal: Palette) {
                 contentPadding = PaddingValues(start = u.dp(12f), end = u.dp(12f), bottom = u.dp(48f)),
             ) {
                 if (s.web) {
-                    if (q.isNotBlank()) item(key = "web") { WebRow(s, pal, q.trim()) }
+                    if (q.isNotBlank()) {
+                        item(key = "web") { WebRow(s, pal, q.trim()) }
+                    } else if (s.recentSearchWords.isNotEmpty()) {
+                        item(key = "recent") { Section("recent", pal, "clear") { s.clearRecentSearches() } }
+                        itemsIndexed(s.recentSearchWords, key = { _, words -> "recent $words" }) { _, words ->
+                            RecentSearchRow(s, pal, words)
+                        }
+                    }
                     return@LazyColumn
                 }
                 if (q.isBlank() && recent.isNotEmpty()) {
@@ -251,6 +258,32 @@ private fun WebRow(s: LauncherState, pal: Palette, q: String) {
         SearchIcon(pal.muted)
         Txt(q, 16f, pal.fg, Modifier.weight(1f), maxLines = 1)
         Txt("web search", 11f, pal.muted, spacing = .04f)
+    }
+}
+
+/** A past web search. A tap searches the same words again, and the cross removes it. */
+@Composable
+private fun RecentSearchRow(s: LauncherState, pal: Palette, words: String) {
+    val u = LocalUnits.current
+    var centre by remember { mutableFloatStateOf(0f) }
+    Row(
+        Modifier.fillMaxWidth().height(u.dp(48f)).clip(RoundedCornerShape(u.dp(10f)))
+            .onGloballyPositioned { centre = it.positionInRoot().y + it.size.height / 2f },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier.weight(1f).fillMaxHeight()
+                .tap { s.searchAgain(words, centre / u.k) }
+                .padding(horizontal = u.dp(16f)),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(u.dp(12f)),
+        ) {
+            SearchIcon(pal.muted)
+            Txt(words, 16f, pal.fg, Modifier.weight(1f), maxLines = 1)
+        }
+        Box(Modifier.size(u.dp(44f)).tap { s.removeRecentSearch(words) }, contentAlignment = Alignment.Center) {
+            Cross(pal.muted, u.dp(10f))
+        }
     }
 }
 

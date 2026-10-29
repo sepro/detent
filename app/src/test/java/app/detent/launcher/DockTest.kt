@@ -19,4 +19,12 @@ class DockTest {
 
     @Test fun webSearchUrlEncodesTheWords() =
         assertEquals("https://www.google.com/search?q=koi+fish+%26+lilies", webSearchUrl(" koi fish & lilies "))
+
+    @Test fun recentPutsTheNewestFirst() = assertEquals(listOf("koi", "nord"), pushRecent(listOf("nord"), "koi", 5))
+
+    // A repeated search moves to the front, so the list never holds the same words twice.
+    @Test fun recentMovesARepeatToTheFront() =
+        assertEquals(listOf("koi", "nord", "lumon"), pushRecent(listOf("nord", "koi", "lumon"), "koi", 5))
+
+    @Test fun recentDropsTheOldest() = assertEquals(listOf("e", "a", "b"), pushRecent(listOf("a", "b", "c"), "e", 3))
 }

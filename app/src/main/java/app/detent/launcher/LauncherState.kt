@@ -1226,7 +1226,7 @@ class LauncherState(
     }
 
     private fun markRecent(app: AppEntry) {
-        prefs.recent = (listOf(app.key) + prefs.recent.filter { it != app.key }).take(RECENT_KEEP)
+        prefs.recent = pushRecent(prefs.recent, app.key, RECENT_KEEP)
     }
 
     // Web search: the corner button can search the web in place of the quick app.
@@ -1242,7 +1242,41 @@ class LauncherState(
         pick = false
         web = true
         typeSearch = true
+        recentSearchWords = prefs.recentSearches
         search = true
+    }
+
+    /**
+     * The words of the last web searches, newest first. Like [recentKeys], a search saves the new order to [prefs]
+     * only, so the list does not reorder while the sheet closes.
+     */
+    var recentSearchWords by mutableStateOf(prefs.recentSearches)
+        private set
+
+    /** A tap on a recent web search: search the same words again. */
+    fun searchAgain(words: String, y: Float) {
+        if (open != null) return
+        query = words
+        webSearch(y)
+    }
+
+    fun removeRecentSearch(words: String) {
+        val before = recentSearchWords
+        fb.tap()
+        saveRecentSearches(before - words)
+        showToast("removed $words from recent") { saveRecentSearches(before) }
+    }
+
+    fun clearRecentSearches() {
+        val before = recentSearchWords
+        fb.tap()
+        saveRecentSearches(emptyList())
+        showToast("cleared recent") { saveRecentSearches(before) }
+    }
+
+    private fun saveRecentSearches(words: List<String>) {
+        recentSearchWords = words
+        prefs.recentSearches = words
     }
 
     /**
@@ -1252,6 +1286,8 @@ class LauncherState(
     fun webSearch(y: Float, size: Float = 16f) {
         val q = query.trim()
         if (q.isEmpty()) return
+        if (open != null) return
+        prefs.recentSearches = pushRecent(prefs.recentSearches, q, RECENT)
         openApp(q, null, null, Pose(28f, y, 0f, size / 44f, 0f), "web search", false) { host.webSearch(q, it) }
     }
 

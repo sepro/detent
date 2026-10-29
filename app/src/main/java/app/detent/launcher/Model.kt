@@ -38,6 +38,9 @@ enum class Corner {
 /** A web search in the browser, for phones that have no app for web searches. */
 fun webSearchUrl(query: String) = "https://www.google.com/search?q=" + java.net.URLEncoder.encode(query.trim(), "UTF-8")
 
+/** Puts [item] at the front of [recent], drops the older copy of it, and keeps at most [keep] items. */
+fun pushRecent(recent: List<String>, item: String, keep: Int) = (listOf(item) + recent.filter { it != item }).take(keep)
+
 /**
  * Radial layouts draw a dial over the wallpaper. The other kinds draw the whole screen as one dot grid:
  * field puts the names on a dial of dots, lens puts every app on a column of dots, and readout shows the

@@ -38,7 +38,7 @@ adb install detent.apk
 | Tap `apps` | Search all your apps. The 5 apps that you last opened from search sit at the top. Tap the cross on a recent app to remove it, or tap `clear`. Tap `+ dial` to add an app to the dial. |
 | Tap the quick button | The quick app opens. If the button has no app, pick one. |
 | Hold the quick button | Pick a different quick app, or tap `clear`. |
-| Tap `search` in the corner | Type words and tap go. Google shows the results in your browser. |
+| Tap `search` in the corner | Type words and tap go. Google shows the results in your browser. Your 5 last web searches sit below the field. Tap one to search again. Tap the cross to remove it, or tap `clear`. |
 | Tap the mic button and say an app name | The dial swells with your voice, and your words show at the top. When the words name one app, the dial turns to it and the app opens. If not, search opens with the words. |
 
 The quick button sits in the bottom corner on the dial side. It holds one app that you need fast, such as the camera. The mic button sits between `apps` and the quick button. On the `dock` step, you can hide the mic button, and put a web `search` button or nothing in the corner.
