@@ -73,6 +73,11 @@ class Prefs(ctx: Context) {
         get() = sp.getString("recent", null)?.split('\n')?.filter { it.isNotEmpty() }.orEmpty()
         set(v) = sp.edit { putString("recent", v.joinToString("\n")) }
 
+    /** The words of the last web searches, newest first. The search field holds one line, so a newline splits them. */
+    var recentSearches: List<String>
+        get() = sp.getString("recentSearches", null)?.split('\n')?.filter { it.isNotEmpty() }.orEmpty()
+        set(v) = sp.edit { putString("recentSearches", v.joinToString("\n")) }
+
     /** The theme and side that the system wallpaper shows now. */
     var appliedWall: String?
         get() = sp.getString("appliedWall", null)
