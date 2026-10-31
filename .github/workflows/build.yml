@@ -70,8 +70,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" detent.apk docs/media/detent-promo.mp4 --clobber
+            gh release upload "$GITHUB_REF_NAME" detent.apk --clobber
           else
-            gh release create "$GITHUB_REF_NAME" detent.apk docs/media/detent-promo.mp4 \
+            gh release create "$GITHUB_REF_NAME" detent.apk \
               --title "Detent $VERSION" --generate-notes --verify-tag
           fi

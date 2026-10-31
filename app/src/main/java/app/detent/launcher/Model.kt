@@ -6,7 +6,6 @@ import androidx.compose.ui.graphics.luminance
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 import kotlin.math.sin
 
 // The design draws a 412 x 892 screen. One design unit is (screen width / 412) px.
@@ -41,34 +40,13 @@ fun webSearchUrl(query: String) = "https://www.google.com/search?q=" + java.net.
 /** Puts [item] at the front of [recent], drops the older copy of it, and keeps at most [keep] items. */
 fun pushRecent(recent: List<String>, item: String, keep: Int) = (listOf(item) + recent.filter { it != item }).take(keep)
 
-/**
- * Radial layouts draw a dial over the wallpaper. The other kinds draw the whole screen as one dot grid:
- * field puts the names on a dial of dots, lens puts every app on a column of dots, and readout shows the
- * name in the dot-matrix clock.
- */
-enum class Kind { Radial, Field, Lens, Readout }
-
-// Radial labels follow the angle of their row.
+// Each layout draws a radial dial over the wallpaper. Labels follow the angle of their row.
 class Layout(
     val name: String,
     val radius: Float,
     val markers: Markers,
     val ticksPerApp: Int,
-    val kind: Kind = Kind.Radial,
-) {
-    val grid get() = kind != Kind.Radial
-
-    /** x of the notch on a right-hand dial. */
-    val ax get() = when (kind) {
-        Kind.Radial -> AX
-        Kind.Field -> 236f
-        Kind.Readout -> 224f
-        Kind.Lens -> LX
-    }
-
-    /** y of the notch. On the grid layouts the notch is a grid dot. */
-    fun cy(hd: Float) = if (grid) snap(476f + (hd - H0) / 2f) else CY0 + (hd - H0) / 2f
-}
+)
 
 val LAYOUTS = listOf(
     Layout("soft · radial · double", 330f, Markers.Double, 4),
@@ -76,23 +54,7 @@ val LAYOUTS = listOf(
     Layout("soft · radial · ticks", 330f, Markers.Ticks, 4),
     Layout("flat · radial · dots", 560f, Markers.Dots, 6),
     Layout("flat · radial · nodes", 560f, Markers.Nodes, 4),
-    Layout("grid · field", 300f, Markers.Double, 1, Kind.Field),
-    Layout("grid · lens", 300f, Markers.Double, 1, Kind.Lens),
-    Layout("grid · readout", 200f, Markers.Double, 1, Kind.Readout),
 )
-
-// The grid layouts. Grid dots sit every G units, starting GO units from the top left corner.
-const val G = 12f
-const val GO = 8f
-const val LX = 380f   // x of the lens column
-const val LENS_GAP = 24f // distance between two lens rows
-const val RX = 20f    // left edge of the dot-matrix readout
-const val RF = 6f     // readout dot pitch
-const val RC = 62     // readout columns
-const val RR = 14     // readout rows
-
-/** The grid dot nearest to [v] on one axis. */
-fun snap(v: Float) = GO + G * ((v - GO) / G).roundToInt()
 
 data class Cfg(val layout: Int = 0, val theme: Int = 0, val side: Side = Side.Right)
 

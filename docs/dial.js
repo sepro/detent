@@ -1,33 +1,24 @@
-// The Detent dial for the web. This file ports the dial and the dot grid from the launcher.
+// The Detent dial for the web. This file ports the dial from the launcher.
 // All sizes are design units. The phone screen is 412 units wide and 892 units high.
 'use strict';
 
 const W = 412, HD = 892, AX = 226, CY0 = 470, GAP = 54;
-const G = 12, GO = 8, LX = 380, LENS_GAP = 24, RX = 20, RF = 6, RC = 62, RR = 14;
 const CLOCK_TOP = 84, SEARCH_Y = 796;
-const READ_Y = 80 + G * Math.ceil(Math.max(0, CLOCK_TOP - 84) / G);
-const LENS_TOP = READ_Y + 112, LENS_BOTTOM = SEARCH_Y - 36;
 const TAU = Math.PI * 2;
 const FONT = '"JetBrains Mono", ui-monospace, monospace';
 
 const mod = (a, n) => ((a % n) + n) % n;
 const c01 = v => Math.min(1, Math.max(0, v));
-const snap = v => GO + G * Math.round((v - GO) / G);
 const inOutCubic = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const approach = (v, t, dt, f) => Math.abs(t - v) < .003 ? t : v + (t - v) * (1 - Math.pow(f, dt / 16));
 
 export const LAYOUTS = [
-  { name: 'soft · radial · double', r: 330, m: 'double', tpa: 4, kind: 'radial' },
-  { name: 'round · radial · double', r: 200, m: 'double', tpa: 5, kind: 'radial' },
-  { name: 'soft · radial · ticks', r: 330, m: 'ticks', tpa: 4, kind: 'radial' },
-  { name: 'flat · radial · dots', r: 560, m: 'dots', tpa: 6, kind: 'radial' },
-  { name: 'flat · radial · nodes', r: 560, m: 'nodes', tpa: 4, kind: 'radial' },
-  { name: 'grid · field', r: 300, m: 'double', tpa: 1, kind: 'field' },
-  { name: 'grid · lens', r: 300, m: 'double', tpa: 1, kind: 'lens' },
-  { name: 'grid · readout', r: 200, m: 'double', tpa: 1, kind: 'readout' },
+  { name: 'soft · radial · double', r: 330, m: 'double', tpa: 4 },
+  { name: 'round · radial · double', r: 200, m: 'double', tpa: 5 },
+  { name: 'soft · radial · ticks', r: 330, m: 'ticks', tpa: 4 },
+  { name: 'flat · radial · dots', r: 560, m: 'dots', tpa: 6 },
+  { name: 'flat · radial · nodes', r: 560, m: 'nodes', tpa: 4 },
 ];
-const axOf = l => ({ radial: AX, field: 236, readout: 224, lens: LX })[l.kind];
-const cyOf = l => l.kind === 'radial' ? CY0 : snap(476);
 
 const rgb = c => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 const T = (name, group, light, bg, fg, accent, wall, hand = 0x504945, wallLeft = null) =>
@@ -98,87 +89,6 @@ const H24 = (() => {
 const pad2 = v => String(v).padStart(2, '0');
 const clockText = (d = new Date()) => (H24 ? pad2(d.getHours()) : String(d.getHours() % 12 || 12)) + ':' + pad2(d.getMinutes());
 const dateText = (d = new Date()) => `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
-
-// The dot-matrix readout. 5 x 7 glyphs. "0" is an empty row, so short letters sit on the baseline.
-const GLYPH_SRC = {
-  a: '0 0 .###. ....# .#### #...# .####', b: '#.... #.... ####. #...# #...# #...# ####.',
-  c: '0 0 .#### #.... #.... #.... .####', d: '....# ....# .#### #...# #...# #...# .####',
-  e: '0 0 .###. #...# ##### #.... .###.', f: '..##. .#... ####. .#... .#... .#... .#...',
-  g: '0 0 .#### #...# #...# #...# .#### ....# .###.', h: '#.... #.... ####. #...# #...# #...# #...#',
-  i: '..#.. 0 .##.. ..#.. ..#.. ..#.. .###.', j: '...#. 0 ..##. ...#. ...#. ...#. ...#. #..#. .##..',
-  k: '#.... #.... #..#. #.#.. ##... #.#.. #..#.', l: '.##.. ..#.. ..#.. ..#.. ..#.. ..#.. .###.',
-  m: '0 0 ##.#. #.#.# #.#.# #.#.# #.#.#', n: '0 0 ####. #...# #...# #...# #...#',
-  o: '0 0 .###. #...# #...# #...# .###.', p: '0 0 ####. #...# #...# #...# ####. #.... #....',
-  q: '0 0 .#### #...# #...# #...# .#### ....# ....#', r: '0 0 #.##. ##..# #.... #.... #....',
-  s: '0 0 .#### #.... .###. ....# ####.', t: '.#... .#... ####. .#... .#... .#..# ..##.',
-  u: '0 0 #...# #...# #...# #...# .####', v: '0 0 #...# #...# #...# .#.#. ..#..',
-  w: '0 0 #...# #...# #.#.# #.#.# .#.#.', x: '0 0 #...# .#.#. ..#.. .#.#. #...#',
-  y: '0 0 #...# #...# #...# #...# .#### ....# .###.', z: '0 0 ##### ...#. ..#.. .#... #####',
-  0: '.###. #...# #..## #.#.# ##..# #...# .###.', 1: '..#.. .##.. ..#.. ..#.. ..#.. ..#.. .###.',
-  2: '.###. #...# ....# ...#. ..#.. .#... #####', 3: '##### ...#. ..#.. ...#. ....# #...# .###.',
-  4: '...#. ..##. .#.#. #..#. ##### ...#. ...#.', 5: '##### #.... ####. ....# ....# #...# .###.',
-  6: '..##. .#... #.... ####. #...# #...# .###.', 7: '##### ....# ...#. ..#.. .#... .#... .#...',
-  8: '.###. #...# #...# .###. #...# #...# .###.', 9: '.###. #...# #...# .#### ....# ...#. .##..',
-  ':': '. . # . # . .',
-};
-const GLYPHS = Object.fromEntries(Object.entries(GLYPH_SRC).map(([k, v]) =>
-  [k, v.split(' ').map(r => r === '0' ? '.....' : r)]));
-
-function bits(text, scale, rowOff) {
-  const out = new Uint8Array(RC * RR);
-  let cx = 0;
-  for (const ch of text) {
-    const g = GLYPHS[ch];
-    if (!g) { cx += 3 * scale; continue; }
-    const w = g[0].length;
-    for (let r = 0; r < g.length; r++) for (let c = 0; c < w; c++) {
-      if (g[r][c] !== '#') continue;
-      for (let sy = 0; sy < scale; sy++) for (let sx = 0; sx < scale; sx++) {
-        const x = cx + c * scale + sx, y = rowOff + r * scale + sy;
-        if (x >= 0 && x < RC && y >= 0 && y < RR) out[y * RC + x] = 1;
-      }
-    }
-    cx += (w + 1) * scale;
-  }
-  return out;
-}
-
-class Readout {
-  constructor() {
-    this.v = new Float32Array(RC * RR);
-    this.accent = new Uint8Array(RC * RR);
-    this.target = new Uint8Array(RC * RR);
-    this.start = new Float64Array(RC * RR);
-  }
-
-  set(text, scale, rowOff, accentOn, now, instant) {
-    const b = bits(text, scale, rowOff);
-    for (let i = 0; i < b.length; i++) {
-      const on = b[i];
-      if (on) this.accent[i] = accentOn ? 1 : 0;
-      if (on !== this.target[i]) {
-        this.target[i] = on;
-        this.start[i] = now + (i % RC) * 5 + (on ? 30 : 0);
-      }
-      if (instant) this.v[i] = on;
-    }
-  }
-
-  /** Moves the dots one frame. Returns true while a dot has not reached its state. */
-  advance(now, dt) {
-    const k = 1 - Math.pow(.7, dt / 16);
-    let busy = false;
-    for (let i = 0; i < this.v.length; i++) {
-      const t = this.target[i], x = this.v[i];
-      if (x === t) continue;
-      busy = true;
-      if (now < this.start[i]) continue;
-      const d = t - x;
-      this.v[i] = Math.abs(d) < .004 ? t : x + d * k;
-    }
-    return busy;
-  }
-}
 
 // Images. Each wallpaper loads once and every dial redraws when it arrives.
 const images = new Map();
@@ -272,7 +182,8 @@ function labelPoseAt(d, chars, s, g, r, left) {
   return { x: left ? W - x0 : x0, y, rot: left ? ang : -ang, tx: left ? -1 : 0, bx: left ? W - bx : bx, by };
 }
 
-const OPEN = { grid: [640, 700, 140, 540], radial: [420, 700, 0, 380] };
+// The open animation in ms: grow, hold, wait, shrink.
+const OPEN = [420, 700, 0, 380];
 
 export class Dial {
   /**
@@ -292,21 +203,18 @@ export class Dial {
     this.vel = 0;
     this.spin = 'idle';
     this.pawl = 0;
-    this.ls = this.lsT = .5;
     this.left = !!o.left;
     this.scrub = null;
     this.letter = '';
     this.drag = null;
     this.open = null;
-    this.readout = new Readout();
-    this.readName = false;
-    this.a = { read: 1, labels: 1, clock: 1, search: 1, scrub: 0, wall: 1 };
+    this.a = { labels: 1, clock: 1, search: 1, scrub: 0, wall: 1 };
     this.wall = null;
     this.prevWall = null;
     this.layoutIndex = o.layout ?? 0;
     this.radius = this.rT = LAYOUTS[this.layoutIndex].r;
     this.setTheme(o.theme ?? 0);
-    this.showClock(true);
+    this.clockShown = clockText();
     this.resize();
     new ResizeObserver(() => this.resize()).observe(canvas);
     onImage.add(() => this.redraw());
@@ -314,9 +222,7 @@ export class Dial {
   }
 
   get layout() { return LAYOUTS[this.layoutIndex]; }
-  get kind() { return this.layout.kind; }
-  get grid() { return this.kind !== 'radial'; }
-  get cy() { return cyOf(this.layout); }
+  get cy() { return CY0; }
 
   resize() {
     const r = this.c.getBoundingClientRect();
@@ -341,12 +247,8 @@ export class Dial {
 
   setLayout(i) {
     if (i === this.layoutIndex) return;
-    const wasGrid = this.grid;
     this.layoutIndex = i;
     this.rT = this.layout.r;
-    if (wasGrid !== this.grid) this.radius = this.rT;
-    this.ls = this.lsT = .5;
-    this.showClock(true);
     this.run();
   }
 
@@ -389,17 +291,13 @@ export class Dial {
       morph = true;
     } else this.radius = this.rT;
     this.pawl *= Math.pow(.8, dt / 16);
-    this.ls = approach(this.ls, this.lsT, dt, .82);
     const idx = Math.round(p);
     if (idx !== this.lastIdx) {
       this.lastIdx = idx;
       this.pawl = 1;
-      this.followReadout(now);
     }
-    const reading = this.grid && this.readout.advance(now, dt);
     const a = this.a, o = this.open;
     const tg = {
-      read: this.scrub && this.kind !== 'readout' ? .25 : 1,
       labels: o ? 0 : 1,
       clock: this.scrub ? .25 : 1,
       search: this.scrub || o ? 0 : 1,
@@ -413,24 +311,18 @@ export class Dial {
     }
     if (o) {
       o.t += dt;
-      const [i, h, d, out] = o.grid ? OPEN.grid : OPEN.radial;
-      if (o.t >= i + h + d + out) {
-        this.open = null;
-        if (this.readName && !this.drag) this.scheduleClock();
-      }
+      const [i, h, d, out] = OPEN;
+      if (o.t >= i + h + d + out) this.open = null;
     }
-    const done = this.spin === 'idle' && this.pawl < .01 && !morph && this.ls === this.lsT && !reading && !fading && !this.open;
-    if (done) {
-      this.pawl = 0;
-      if (this.readName && !this.drag) this.scheduleClock();
-    }
+    const done = this.spin === 'idle' && this.pawl < .01 && !morph && !fading && !this.open;
+    if (done) this.pawl = 0;
     return !done;
   }
 
   openProgress() {
     const o = this.open;
     if (!o) return 0;
-    const [i, h, d, out] = o.grid ? OPEN.grid : OPEN.radial;
+    const [i, h, d, out] = OPEN;
     let t = o.t;
     if (t < i) return inOutCubic(t / i);
     t -= i + h + d;
@@ -438,44 +330,10 @@ export class Dial {
     return t < out ? 1 - inOutCubic(t / out) : 0;
   }
 
-  // The readout on the grid layouts.
-
-  followReadout(now = performance.now()) {
-    if (this.kind !== 'readout') return;
-    if (this.scrub) {
-      clearTimeout(this.clockTimer);
-      this.readName = true;
-      this.readout.set(this.scrub[mod(Math.round(this.pos), this.scrub.length)], 2, 0, true, now, false);
-      this.run();
-    } else this.showName();
-  }
-
-  showName() {
-    clearTimeout(this.clockTimer);
-    this.readName = true;
-    this.readout.set(this.names[mod(Math.round(this.pos), this.names.length)], 1, 3, true, performance.now(), false);
-    this.run();
-  }
-
-  showClock(instant = false) {
-    clearTimeout(this.clockTimer);
-    this.readName = false;
-    this.clockShown = clockText();
-    this.readout.set(this.clockShown, 2, 0, false, performance.now(), instant);
-    this.run();
-  }
-
-  scheduleClock() {
-    clearTimeout(this.clockTimer);
-    this.clockTimer = setTimeout(() => {
-      if (!this.drag && this.spin === 'idle' && !this.open) this.showClock();
-    }, 1600);
-  }
-
   /** Redraws when the minute changes. */
   tick() {
     if (clockText() === this.clockShown) return;
-    if (!this.readName) this.showClock(); else this.clockShown = clockText();
+    this.clockShown = clockText();
     this.redraw();
   }
 
@@ -484,46 +342,14 @@ export class Dial {
   mirX(x) { return this.left ? W - x : x; }
 
   zoneAt(x, y) {
-    if (this.kind === 'lens') {
-      if (!this.onLens(x, y)) return 'empty';
-      return this.lensRowAt(y) === Math.round(this.pos) ? 'selected' : 'dial';
-    }
     if (y < 200 || y > HD - 102) return 'empty';
-    const g = geo(this.radius, this.cy, axOf(this.layout));
+    const g = geo(this.radius, this.cy);
     const dx = g.cx - this.mirX(x), dy = y - this.cy;
     const dist = Math.hypot(dx, dy);
     if (dist <= g.r - 200 || dist >= g.r + 40) return 'empty';
     const k = this.pos + Math.atan2(dy, dx) / g.step;
     if (Math.abs(k - this.pos) > g.span) return 'empty';
     return Math.round(k) === Math.round(this.pos) ? 'selected' : 'dial';
-  }
-
-  onLens(x, y) { return this.mirX(x) > 160 && y > LENS_TOP - 12 && y < LENS_BOTTOM + 12; }
-
-  lensRowY(i) {
-    const dy = (i - this.pos) * LENS_GAP, l = 70 + 60 * this.ls, ad = Math.abs(dy);
-    if (ad >= l) return this.cy + dy;
-    const t = 1 - ad / l;
-    return this.cy + dy * (1 + .9 * this.ls * t * t);
-  }
-
-  lensRowAt(y) {
-    const c = Math.round(this.pos + (y - this.cy) / LENS_GAP);
-    let best = c, bd = Infinity;
-    for (let i = c - 4; i <= c + 4; i++) {
-      const d = Math.abs(this.lensRowY(i) - y);
-      if (d < bd) { bd = d; best = i; }
-    }
-    return bd <= 16 ? best : null;
-  }
-
-  onLensName(i, x, y) {
-    const dy = (i - this.pos) * LENS_GAP, l = 70 + 60 * this.ls;
-    if (Math.abs(dy) >= l) return false;
-    const name = this.names[mod(i, this.names.length)];
-    const right = LX - 10, leftEdge = LX - 18 - name.length * CH * 1.7 - 8;
-    const mx = this.mirX(x);
-    return mx > leftEdge && mx < right && Math.abs(y - this.lensRowY(i)) < 14;
   }
 
   point(e) {
@@ -577,8 +403,6 @@ export class Dial {
     this.drag = d;
     this.spin = 'drag';
     this.vel = 0;
-    if (this.kind === 'lens') { clearTimeout(this.lsTimer); this.lsT = 1; }
-    if (this.kind === 'readout') this.showName();
     if (zone !== 'empty') {
       this.press = setTimeout(() => { if (this.drag === d && !d.moved) this.startScrub(); }, 450);
     }
@@ -593,7 +417,7 @@ export class Dial {
       d.moved = true;
       clearTimeout(this.press);
     }
-    this.pos -= (y - d.y) / (this.kind === 'lens' ? LENS_GAP : GAP);
+    this.pos -= (y - d.y) / GAP;
     d.y = y;
     const t = performance.now();
     d.samples.push([t, this.pos]);
@@ -613,7 +437,6 @@ export class Dial {
     const d = this.drag;
     if (!d) return;
     this.drag = null;
-    if (this.kind === 'lens') this.lsT = .5;
     if (d.scrub) { this.endScrub(); return; }
     const t = performance.now();
     this.target = Math.round(this.pos);
@@ -635,7 +458,6 @@ export class Dial {
     const d = this.drag;
     if (!d) return;
     this.drag = null;
-    if (this.kind === 'lens') this.lsT = .5;
     if (d.scrub) { this.endScrub(); return; }
     this.target = Math.round(this.pos);
     this.spin = 'settle';
@@ -644,12 +466,6 @@ export class Dial {
 
   stepBy(n) {
     const base = this.spin === 'settle' ? this.target : Math.round(this.pos);
-    if (this.kind === 'lens') {
-      this.lsT = 1;
-      clearTimeout(this.lsTimer);
-      this.lsTimer = setTimeout(() => { this.lsT = .5; this.run(); }, 700);
-    }
-    if (this.kind === 'readout') this.showName();
     this.target = base + n;
     this.spin = 'settle';
     this.run();
@@ -665,7 +481,6 @@ export class Dial {
     this.spin = 'drag';
     this.drag.scrub = true;
     this.scrub = letters;
-    this.followReadout();
     this.run();
   }
 
@@ -682,30 +497,16 @@ export class Dial {
     this.pos = this.lastIdx = this.scrubBase;
     this.target = this.scrubBase + d;
     this.spin = 'settle';
-    this.followReadout();
     this.run();
   }
 
   tapAt(x, y) {
     const cur = Math.round(this.pos);
-    if (this.kind === 'readout' && y > READ_Y - 10 && y < READ_Y + 90) { this.launchSelected(); return; }
-    if (this.kind === 'lens') {
-      if (!this.onLens(x, y)) return;
-      const k = this.lensRowAt(y);
-      if (k === null) return;
-      const named = this.onLensName(k, x, y);
-      if (!named && this.mirX(x) < LX - 16) return;
-      if (k === cur) this.launchSelected();
-      else if (named) this.launchAt(k);
-      else { this.target = k; this.spin = 'settle'; }
-      return;
-    }
     if (this.zoneAt(x, y) === 'empty') return;
-    const g = geo(this.radius, this.cy, axOf(this.layout));
+    const g = geo(this.radius, this.cy);
     const k = Math.round(this.pos + Math.atan2(y - this.cy, g.cx - this.mirX(x)) / g.step);
     if (k === cur) this.launchSelected();
-    else if (this.kind !== 'readout') this.launchAt(k);
-    else { this.target = k; this.spin = 'settle'; }
+    else this.launchAt(k);
   }
 
   launchSelected() { this.openApp(Math.round(this.target)); }
@@ -719,16 +520,9 @@ export class Dial {
   openApp(k) {
     const name = this.names[mod(k, this.names.length)];
     this.unread.delete(name);
-    let rx, ry;
-    if (this.grid) {
-      rx = this.mirX(axOf(this.layout));
-      ry = this.cy;
-    } else {
-      const p = labelPoseAt(k - this.pos, name.length, 1, geo(this.radius, this.cy), labelRadius(geo(this.radius, this.cy), this.layout.m), this.left);
-      rx = p.x;
-      ry = p.y;
-    }
-    this.open = { name, t: 0, grid: this.grid, rx, ry };
+    const g = geo(this.radius, this.cy);
+    const p = labelPoseAt(k - this.pos, name.length, 1, g, labelRadius(g, this.layout.m), this.left);
+    this.open = { name, t: 0, rx: p.x, ry: p.y };
     this.onChange({ open: name });
     this.run();
   }
@@ -749,8 +543,8 @@ export class Dial {
 
   openQuick() {
     const b = this.quickBox();
-    // The grid ripple starts at the label. The radial sheet grows from it.
-    this.open = { name: QUICK, t: 0, grid: this.grid, rx: b.x + 38 + (this.grid ? 6 : 0), ry: b.y + b.h / 2 };
+    // The sheet grows from the label.
+    this.open = { name: QUICK, t: 0, rx: b.x + 38, ry: b.y + b.h / 2 };
     this.onChange({ open: QUICK });
     this.run();
   }
@@ -789,31 +583,26 @@ export class Dial {
     g.globalAlpha = 1;
     g.fillStyle = css(pal.bg);
     g.fillRect(0, 0, this.c.width, this.c.height);
-    if (!this.grid) {
-      const wl = wallLayer(this.theme, this.left, this.c.width, this.c.height);
-      if (wl && wl !== this.wall) {
-        // A new wallpaper fades in over the old one. A resize swaps it at once.
-        const fade = !this.still && this.wall && this.wall.width === wl.width;
-        this.prevWall = this.wall;
-        this.wall = wl;
-        if (fade) { this.a.wall = 0; this.run(); }
-      }
-      if (this.prevWall && this.a.wall < 1 && this.prevWall.width === this.c.width) g.drawImage(this.prevWall, 0, 0);
-      if (this.wall) {
-        g.globalAlpha = this.still ? 1 : this.a.wall;
-        g.drawImage(this.wall, 0, 0);
-        g.globalAlpha = 1;
-      }
+    const wl = wallLayer(this.theme, this.left, this.c.width, this.c.height);
+    if (wl && wl !== this.wall) {
+      // A new wallpaper fades in over the old one. A resize swaps it at once.
+      const fade = !this.still && this.wall && this.wall.width === wl.width;
+      this.prevWall = this.wall;
+      this.wall = wl;
+      if (fade) { this.a.wall = 0; this.run(); }
+    }
+    if (this.prevWall && this.a.wall < 1 && this.prevWall.width === this.c.width) g.drawImage(this.prevWall, 0, 0);
+    if (this.wall) {
+      g.globalAlpha = this.still ? 1 : this.a.wall;
+      g.drawImage(this.wall, 0, 0);
+      g.globalAlpha = 1;
     }
     g.setTransform(k, 0, 0, k, 0, 0);
-    if (this.grid) this.drawGrid();
-    else {
-      this.drawClock();
-      this.drawMarks();
-      this.drawLabels();
-      this.drawNotch();
-    }
-    if (this.kind !== 'readout') this.drawScrubLetter();
+    this.drawClock();
+    this.drawMarks();
+    this.drawLabels();
+    this.drawNotch();
+    this.drawScrubLetter();
     this.drawSearch();
     this.drawVoice();
     this.drawQuick();
@@ -933,13 +722,11 @@ export class Dial {
     const o = this.open;
     if (!o) return;
     const v = this.openProgress(), g = this.g, pal = this.pal;
-    if (!o.grid) {
-      const far = Math.max(Math.hypot(o.rx, o.ry), Math.hypot(W - o.rx, o.ry), Math.hypot(o.rx, HD - o.ry), Math.hypot(W - o.rx, HD - o.ry));
-      g.fillStyle = css(pal.sheet);
-      g.beginPath();
-      g.arc(o.rx, o.ry, Math.max(0, v * far), 0, TAU);
-      g.fill();
-    }
+    const far = Math.max(Math.hypot(o.rx, o.ry), Math.hypot(W - o.rx, o.ry), Math.hypot(o.rx, HD - o.ry), Math.hypot(W - o.rx, HD - o.ry));
+    g.fillStyle = css(pal.sheet);
+    g.beginPath();
+    g.arc(o.rx, o.ry, Math.max(0, v * far), 0, TAU);
+    g.fill();
     const t = c01((v - .7) / .3);
     if (t > 0) this.text(o.name, W / 2, HD / 2 - 10, 30, 300, pal.fg, t, -.02, 'center');
   }
@@ -1056,212 +843,6 @@ export class Dial {
         break;
       default:
         [[191.5, 3, .45], [200, 4, .7], [209.5, 5, 1]].forEach(([c, s, a]) => this.dot(x(c), cy, s / 2, pal.accent, a));
-    }
-  }
-
-  drawGrid() {
-    const g = this.g, pal = this.pal, L = this.layout, kind = L.kind, left = this.left, pos = this.pos, pawl = this.pawl;
-    const mir = x => left ? W - x : x;
-    const names = this.scrub || this.names, n = names.length, cur = Math.round(pos);
-    const unread = this.scrub ? null : this.names.map(a => this.unread.has(a));
-    const o = this.open && this.open.grid ? this.open : null;
-    const rx = o ? o.rx : 0, ry = o ? o.ry : 0;
-    const rr = o ? this.openProgress() * (Math.max(Math.hypot(rx, ry), Math.hypot(W - rx, ry), Math.hypot(rx, HD - ry),
-      Math.hypot(W - rx, HD - ry)) + 150) : -1;
-    const read = this.a.read, labels = this.a.labels;
-    const base = [], dim = [], unlit = [], flood = [], floodRead = [], vary = [];
-    const rg = [0, 0, 0];
-
-    // Grows a dot inside the ripple: an accent ring at the front, then the sheet colour.
-    const ripple = (x, y, r, a, front, full) => {
-      const d = rr - Math.hypot(x - rx, y - ry);
-      if (d <= 0) return 0;
-      if (d < 30) { rg[0] = Math.max(r, front); rg[1] = Math.max(a, .85); rg[2] = 1; return 1; }
-      const q = inOutCubic(c01((d - 30) / 110));
-      if (q >= 1) return 2;
-      rg[0] = r + (full - r) * q; rg[1] = a + (1 - a) * q; rg[2] = 2;
-      return 1;
-    };
-
-    const r0 = this.radius, ax = axOf(L), cy = this.cy, cx = ax + r0, step = GAP / r0;
-    const tmax = Math.min(6.5, 1.55 / step) * step;
-    const lsE = this.ls, lensL = 70 + 60 * lsE, lensK = .9 * lsE;
-    const rows = Math.floor((HD - GO) / G) + 2;
-
-    for (let j = 0; j < rows; j++) {
-      const y0 = GO + j * G;
-      for (let i = 0; i < 34; i++) {
-        const x0 = GO + i * G, sx = mir(x0);
-        if (y0 > READ_Y - 4 && y0 < READ_Y + 80 && sx > 16 && sx < 390) continue;
-        let x = x0, y = y0, r = 1.2, a = .16, col = 0, special = false, inner = false;
-        if (kind === 'lens') {
-          // The column moves, so its dots are drawn below.
-          if (x0 === LX && y0 > LENS_TOP - 6 && y0 < LENS_BOTTOM + 6) continue;
-          const dx = x0 - LX, dy = y0 - cy, dd = Math.sqrt(dx * dx + dy * dy);
-          if (dd < lensL) {
-            const t = 1 - dd / lensL, m = 1 + lensK * t * t;
-            x = LX + dx * m;
-            y = cy + dy * m;
-            const tt = t * t * lsE;
-            if (tt > .002) { r = 1.2 * (1 + 1.5 * tt); a = .16 + .3 * tt; special = true; }
-          }
-        } else {
-          const dx = cx - x0, dy = y0 - cy, du = Math.sqrt(dx * dx + dy * dy) - r0;
-          if (kind === 'field' && du < -34) inner = true;
-          else if (du > -32 && du <= 9 && (du >= -9 || du < -14)) {
-            const th = Math.atan2(dy, dx), env = c01(1 - Math.abs(th) / tmax);
-            if (env > 0) {
-              // A swell travels along the double arc as the dial turns.
-              const aa = pos + th / step, dl = Math.abs(aa - Math.round(aa));
-              const bump = Math.pow(Math.cos(Math.PI * dl), 8), f = c01(1 - Math.abs(th) / .8), e2 = Math.pow(env, .7);
-              if (du >= -9) {
-                r = 1.2 + e2 * (.4 + 1.9 * f * f + 1.8 * bump);
-                a = .16 + e2 * (.18 + .5 * f + .45 * bump);
-                // The readout dial has no names, so an unread app tints its swell.
-                if (kind === 'readout' && unread && n > 0 && bump > .35 && unread[mod(Math.round(aa), n)]) col = 1;
-              } else {
-                r = 1.1 + e2 * (.25 + f * f + bump);
-                a = .12 + e2 * (.1 + .3 * f + .3 * bump);
-              }
-              a = Math.min(a, 1);
-              special = true;
-            }
-          }
-          if (x0 === ax && y0 === cy) {
-            r = 1.2 + 3.4 + pawl * 1.3;
-            a = 1;
-            col = 1;
-            special = true;
-            inner = false;
-          }
-        }
-        const px = mir(x);
-        if (rr > 0) {
-          const q = ripple(px, y, r, a, 2.4, 8.9);
-          if (q === 2) { flood.push(px, y); continue; }
-          if (q === 1) { [r, a, col] = rg; special = true; inner = false; }
-        }
-        if (special) vary.push(px, y, r, a, col);
-        else if (inner) dim.push(px, y);
-        else base.push(px, y);
-      }
-    }
-
-    // The lens column: one dot per app and a small dot between two apps. The rows repeat without end and flow
-    // through the lens. The selected dot is the notch. The column fades out at both ends.
-    if (kind === 'lens' && n > 0) {
-      const first = Math.floor(pos + (LENS_TOP - cy) / LENS_GAP) - 1;
-      const last = Math.ceil(pos + (LENS_BOTTOM - cy) / LENS_GAP) + 1;
-      for (let i = first; i <= last; i++) for (let half = 0; half <= 1; half++) {
-        const y0 = cy + (i - pos + half * .5) * LENS_GAP;
-        if (y0 < LENS_TOP || y0 > LENS_BOTTOM) continue;
-        const dy = y0 - cy, ad = Math.abs(dy);
-        let y = y0, tt = 0;
-        if (ad < lensL) {
-          const t = 1 - ad / lensL;
-          y = cy + dy * (1 + lensK * t * t);
-          tt = t * t * lsE;
-        }
-        let r, a, col = 0;
-        if (half === 1) {
-          r = 1.2 * (1 + 1.5 * tt);
-          a = .16 + .3 * tt;
-        } else if (i === cur) {
-          r = 3.4 + 1.6 * this.ls + pawl;
-          a = 1;
-          col = 1;
-        } else {
-          r = 1.8 * (1 + 1.3 * tt);
-          a = .5 + .4 * tt;
-          if (unread && unread[mod(i, n)]) col = 1;
-        }
-        a *= c01((y0 - LENS_TOP) / 36) * c01((LENS_BOTTOM - y0) / 36);
-        const px = mir(LX);
-        if (rr > 0) {
-          const q = ripple(px, y, r, a, 2.4, 8.9);
-          if (q === 2) { flood.push(px, y); continue; }
-          if (q === 1) [r, a, col] = rg;
-        }
-        vary.push(px, y, r, a, col);
-      }
-    }
-
-    // The dot-matrix readout.
-    const rv = this.readout.v, racc = this.readout.accent;
-    for (let jj = 0; jj < RR; jj++) for (let ii = 0; ii < RC; ii++) {
-      const idx = jj * RC + ii, x = RX + ii * RF, y = READ_Y + jj * RF, v = rv[idx];
-      let r = .85 + 1.75 * v, a = (.08 + .92 * v) * read, col = racc[idx], lit = v > .02;
-      if (rr > 0) {
-        const q = ripple(x, y, r, a, 1.6, 4.5);
-        if (q === 2) { floodRead.push(x, y); continue; }
-        if (q === 1) { [r, a, col] = rg; lit = true; }
-      }
-      if (lit) vary.push(x, y, r, a, col); else unlit.push(x, y);
-    }
-
-    const batch = (d, r, a, c) => {
-      if (!d.length || a <= 0) return;
-      g.globalAlpha = a;
-      g.fillStyle = css(c);
-      g.beginPath();
-      for (let q = 0; q < d.length; q += 2) { g.moveTo(d[q] + r, d[q + 1]); g.arc(d[q], d[q + 1], r, 0, TAU); }
-      g.fill();
-    };
-    batch(base, 1.2, .16, pal.fg);
-    batch(dim, 1.1, .08, pal.fg);
-    batch(unlit, .85, .08 * read, pal.fg);
-    batch(flood, 8.9, 1, pal.sheet);
-    batch(floodRead, 4.5, 1, pal.sheet);
-    const colors = [css(pal.fg), css(pal.accent), css(pal.sheet)];
-    for (let q = 0; q < vary.length; q += 5) {
-      g.globalAlpha = c01(vary[q + 3]);
-      g.fillStyle = colors[vary[q + 4]];
-      g.beginPath();
-      g.arc(vary[q], vary[q + 1], vary[q + 2], 0, TAU);
-      g.fill();
-    }
-    g.globalAlpha = 1;
-
-    if (labels > .004 && n > 0) {
-      if (kind === 'field') this.drawFieldLabels(names, unread, geo(r0, cy, ax), labels);
-      else if (kind === 'lens') {
-        for (let i = cur - 8; i <= cur + 8; i++) {
-          const dy = (i - pos) * LENS_GAP, ad = Math.abs(dy);
-          if (ad >= lensL) continue;
-          const t = 1 - ad / lensL, y = cy + dy * (1 + lensK * t * t), on = i === cur;
-          const sc = 1 + .7 * t * t * lsE + (on ? .15 : 0);
-          const op = Math.min(1, t * 1.8) * (on ? 1 : .55 + .45 * lsE) * labels;
-          if (op < .004) continue;
-          g.save();
-          g.translate(mir(LX - 18 - 8 * t * lsE), y);
-          g.scale(sc, sc);
-          this.text(names[mod(i, n)], 0, 0, 15, on ? 500 : 400, on ? pal.accent : pal.fg, op, .01, left ? 'left' : 'right');
-          g.restore();
-        }
-      }
-    }
-
-    // The date under the readout. The readout layout shows the position of the selected app while it reads a name.
-    const date = this.readName && kind === 'readout' && !this.scrub && n > 0
-      ? `${pad2(mod(cur, n) + 1)} / ${n} · tap to open` : dateText();
-    this.text(date, RX, READ_Y + 92, 12, 400, pal.muted2, read * labels, .04, 'left', 'top');
-  }
-
-  drawFieldLabels(names, unread, gg, alpha) {
-    const n = names.length, rl = gg.r - 46;
-    // The names ride on spokes inside the arc.
-    for (let i = 0; i < n; i++) {
-      let d = mod(i - this.pos, n);
-      if (d > n / 2) d -= n;
-      const a = Math.abs(d);
-      if (a >= gg.span) continue;
-      const cl = Math.max(0, 1 - a), sel = cl > .5, name = names[i];
-      const s = this.scrub ? 1 + .9 * cl * cl : 1 + (Math.min(1.4, Math.max(1, 116 / (name.length * CH))) - 1) * cl * cl;
-      const p = labelPoseAt(d, name.length, s, gg, rl, this.left);
-      const op = Math.pow(1 - a / gg.span, 1.35) * alpha;
-      if (op < .004) continue;
-      this.label(name, p, s, sel, op);
-      if (unread && unread[i]) this.dot(p.bx, p.by, 2.5, this.pal.accent, op);
     }
   }
 }

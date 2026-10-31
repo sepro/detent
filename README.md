@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="docs/media/detent-promo.mp4"><img src="docs/media/home.jpg" alt="Detent on a phone with the retro-82 theme. The apps sit on a dial at the right edge of the screen." width="100%"></a>
+  <a href="docs/media/detent-promo.mp4"><img src="docs/media/home.jpg" alt="Detent on a phone with the koi-watercolor theme. The apps sit on a dial at the right edge of the screen." width="100%"></a>
 </p>
 
 # Detent
@@ -30,7 +30,6 @@ adb install detent.apk
 | --- | --- |
 | Drag or flick the dial | The dial turns. Each app clicks into the notch. |
 | Tap any app on the dial | The app opens. Its name lifts off the dial, and the dial turns the app into the notch. |
-| Tap the readout | On `grid · readout`, the app in the notch opens. |
 | Tap the dial while it turns | The dial stops. No app opens. |
 | Hold the dial | Letters replace the apps. Slide to a letter and release to jump to it. |
 | Hold the app in the notch | A menu shows the app shortcuts, `app info`, and `remove from dial`. |
@@ -56,7 +55,7 @@ With a hardware keyboard, `j` and `k` turn the dial. `l` or `Enter` opens the ap
 
 ## Shapes and themes
 
-Detent has 8 layouts. Layouts 1 to 5 put a radial dial over the wallpaper. Each name follows the curve of the dial.
+Detent has 5 layouts. Each layout puts a radial dial over the wallpaper. Each name follows the curve of the dial.
 
 | Layout | Look |
 | --- | --- |
@@ -66,23 +65,13 @@ Detent has 8 layouts. Layouts 1 to 5 put a radial dial over the wallpaper. Each 
 | `flat · radial · dots` | A dot matrix on a wide curve. |
 | `flat · radial · nodes` | Small nodes on a wide curve. |
 
-Layouts 6 to 8 draw the whole screen as one grid of dots. The clock is a dot-matrix readout. The grid layouts do not show a wallpaper.
-
-| Layout | Look |
-| --- | --- |
-| `grid · field` | The grid draws the dial. A swell runs through the dots as you turn. The names sit on spokes. |
-| `grid · lens` | Each app is one dot in a column at the edge. Scroll the column like the dial. It loops without end and flows through a lens at the notch. The lens spreads out the names near the notch. |
-| `grid · readout` | The dial has no names. Turn the dial and the readout shows the app name. Release and the readout shows the time again. |
-
-On the grid layouts, an app opens with a ripple of dots from the notch.
-
 The dial can sit on the right or the left edge.
 
 Detent has 28 themes. The 4 phone themes are dusk, ember, signal, and paper. They use a tinted dot-hand art. The 23 Omarchy themes each bring their own wallpaper. The sepro group holds koi-watercolor, a dark teal theme with a koi pond wallpaper. On the theme step, the colours change on each click of the dial. The wallpaper loads when the dial stops.
 
 ### Use your own wallpaper
 
-Your photo replaces the theme wallpaper. The theme still sets the colours. The grid layouts do not show a wallpaper.
+Your photo replaces the theme wallpaper. The theme still sets the colours.
 
 1. Hold the clock to open the setup.
 2. Tap `next` to go to the theme step.
@@ -100,9 +89,9 @@ The `feel` step has 4 switches:
 | Switch | What it does |
 | --- | --- |
 | `sound` | Plays a short click for each app that passes the notch. The phone mutes it in silent or vibrate mode. |
-| `haptics` | Gives a light tick for each app and a firmer tick for each letter. It follows the system touch feedback setting. |
+| `haptics` | Gives a light tick for each app and a firmer tick for each letter. It still works when the system touch feedback is off. |
 | `dots` | Shows an accent dot on apps with new notifications. The dot clears when you open the app. This switch needs notification access. |
-| `lock screen` | Sets the lock screen and the system wallpaper to the theme. On the grid layouts, it sets the dot grid. Android then takes the lock screen colours from it. |
+| `lock screen` | Sets the lock screen and the system wallpaper to the theme. Android then takes the lock screen colours from it. |
 
 The `dock` step sets the buttons at the bottom of the home screen:
 

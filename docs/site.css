@@ -47,7 +47,7 @@ body {
   overflow-x: hidden;
 }
 
-/* The page sits on the same dot grid as the grid layouts. */
+/* The page sits on a faint dot grid. */
 body::before {
   content: "";
   position: fixed;

@@ -19,7 +19,7 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.random.Random
 
-/** Detent clicks and haptics. Both follow the user's toggles and the system settings. */
+/** Detent clicks and haptics. The clicks follow the ringer mode, and both follow the user's toggles in Detent. */
 class Feedback(private val ctx: Context) {
     var sound = true
     var haptics = true
@@ -79,7 +79,9 @@ class Feedback(private val ctx: Context) {
         if (!v.hasVibrator()) return
         try {
             if (Build.VERSION.SDK_INT >= 33) {
-                v.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_TOUCH))
+                // The dial stands in for a physical knob with detents. Touch usage would go silent when the system
+                // touch feedback is off, while physical emulation still plays and our own haptics toggle rules it.
+                v.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_PHYSICAL_EMULATION))
             } else {
                 @Suppress("DEPRECATION") v.vibrate(effect, sonification)
             }
