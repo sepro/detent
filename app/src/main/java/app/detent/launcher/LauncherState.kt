@@ -18,10 +18,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.ceil
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -44,10 +42,6 @@ data class OpenApp(
     val from: Pose,
     val fromDial: Boolean,
     val phase: Phase,
-    /** True on the grid layouts. The grid opens the app with a dot ripple from ([rx], [ry]). */
-    val ripple: Boolean = false,
-    val rx: Float = 0f,
-    val ry: Float = 0f,
 )
 
 /** Search shows this many recent apps. */
@@ -84,7 +78,6 @@ interface Host {
     fun requestHome()
     fun hasNotificationAccess(): Boolean
     fun openNotificationAccess()
-    fun is24Hour(): Boolean
 
     /** Starts the speech input of the phone. Calls [done] with what it heard, best guess first. Returns false when the phone has no speech input. */
     fun listen(done: (List<String>) -> Unit): Boolean
@@ -103,11 +96,8 @@ interface Host {
     /** Stops the speech service and drops what it heard. */
     fun stopHearing()
 
-    /**
-     * Sets the lock screen and system wallpaper off the main thread, then calls [done] on the main thread.
-     * [grid] draws the dot grid in place of a wallpaper.
-     */
-    fun setWallpaper(theme: ThemeDef, pal: Palette, left: Boolean, custom: String?, grid: Boolean, done: (Boolean) -> Unit)
+    /** Sets the lock screen and system wallpaper off the main thread, then calls [done] on the main thread. */
+    fun setWallpaper(theme: ThemeDef, pal: Palette, left: Boolean, custom: String?, done: (Boolean) -> Unit)
 
     /**
      * Opens the photo picker and saves the picked image. [done] gets the saved path, or null when the user
@@ -151,7 +141,7 @@ class LauncherState(
     var hd = H0
     var clockTop = 84f
     var searchY = 796f
-    val cy get() = layout.cy(hd)
+    val cy get() = CY0 + (hd - H0) / 2f
 
     // Dial engine. The canvas reads these three every frame.
     var pos by mutableFloatStateOf(0f)
@@ -164,20 +154,6 @@ class LauncherState(
         private set
     val index by derivedStateOf { pos.roundToInt() }
 
-    /** How far the lens bulges, from 0.5 at rest to 1 under the finger. */
-    var ls by mutableFloatStateOf(.5f)
-        private set
-    private var lsT = .5f
-
-    /** The dot-matrix readout of the grid layouts. [readTick] changes on each frame that moves its dots. */
-    val readout = Readout()
-    var readTick by mutableIntStateOf(0)
-        private set
-
-    /** True while the readout shows an app name in place of the time. */
-    var readName by mutableStateOf(false)
-        private set
-
     private var vel = 0f
     private var target = 0f
     private var lastIdx = 0
@@ -189,8 +165,6 @@ class LauncherState(
     private var wheelJob: Job? = null
     private var toastJob: Job? = null
     private var warnJob: Job? = null
-    private var clockJob: Job? = null
-    private var lsJob: Job? = null
     private var scrubBase = 0
     private var appPos = 0
     private var seq = 0L
@@ -274,7 +248,6 @@ class LauncherState(
     private var opened by mutableStateOf(prefs.opened())
 
     val layout get() = LAYOUTS[cfg.layout]
-    val kind get() = layout.kind
     val left get() = cfg.side == Side.Left
     val dialApps by derivedStateOf { repo.apps.filter { it.key in dialKeys } }
 
@@ -292,12 +265,10 @@ class LauncherState(
             startOb()
         }
         repo.onLoaded = ::appsLoaded
-        showClock(instant = true)
         scope.launch { Unread.state.collect { unread = it } }
         scope.launch {
             while (isActive) {
                 now = System.currentTimeMillis()
-                if (!readName) showClock()
                 delay(60_000 - now % 60_000 + 20)
             }
         }
@@ -345,7 +316,6 @@ class LauncherState(
         now = System.currentTimeMillis()
         notifAccess = host.hasNotificationAccess()
         isHome = host.isDefaultHome()
-        if (!readName) showClock()
         val o = open ?: return
         // Back from an app: the name drops back into the dial.
         if (o.phase != Phase.Out) {
@@ -459,8 +429,6 @@ class LauncherState(
             radius = rTarget
         }
         pawl *= 0.8f.pow(dt / 16f)
-        val lsD = lsT - ls
-        ls = if (abs(lsD) < .003f) lsT else ls + lsD * (1 - 0.82f.pow(dt / 16f))
         val idx = p.roundToInt()
         if (idx != lastIdx) {
             lastIdx = idx
@@ -473,140 +441,27 @@ class LauncherState(
                 fb.click(letters)
                 if (letters) fb.letter() else fb.tick()
             }
-            followReadout()
         }
-        val reading = layout.grid && readout.advance(SystemClock.uptimeMillis(), dt)
-        if (reading) readTick++
-        val done = spin == Spin.Idle && pawl < 0.01f && !morph && ls == lsT && !reading
+        val done = spin == Spin.Idle && pawl < 0.01f && !morph
         if (done) {
             pawl = 0f
             if (ob == null && scrub == null) prefs.savePos(index)
-            if (readName && drag == null && open == null && hear == null) scheduleClock()
         }
         return !done
     }
 
     private fun stepBy(n: Int) {
         val base = if (spin == Spin.Settle) target else pos.roundToInt().toFloat()
-        if (kind == Kind.Lens) pulseLens()
         target = base + n
         spin = Spin.Settle
         run()
     }
-
-    // Grid layouts.
-
-    /** Top row of the readout. A tall status bar moves it down by whole grid rows. */
-    val readY get() = 80f + G * ceil(max(0f, clockTop - 84f) / G)
-
-    /** The lens column runs from below the date to above the search button. The lens sits at the notch. */
-    val lensTop get() = readY + 112f
-    val lensBottom get() = searchY - 36f
 
     /** Rows on the dial: the themes on the theme step, the apps on all other screens. */
     private fun count() = if (ob == Step.THEME) THEMES.size else dialApps.size
 
     /** y of the selected app. */
     val anchorY get() = cy
-
-    private fun pulseLens() {
-        lsT = 1f
-        lsJob?.cancel()
-        lsJob = scope.launch {
-            delay(700)
-            lsT = .5f
-            run()
-        }
-    }
-
-    private fun onLens(x: Float, y: Float) = mirX(x) > 160 && y > lensTop - 12 && y < lensBottom + 12
-
-    /** y of lens row [i] after the bulge. The geometry follows the lens drawing. */
-    private fun lensRowY(i: Int): Float {
-        val dy = (i - pos) * LENS_GAP
-        val l = 70 + 60 * ls
-        val ad = abs(dy)
-        if (ad >= l) return cy + dy
-        val t = 1 - ad / l
-        return cy + dy * (1 + .9f * ls * t * t)
-    }
-
-    /** The lens row nearest to [y]. Rows count full turns, like the dial position. */
-    private fun lensRowAt(y: Float): Int {
-        val p = pos.roundToInt()
-        var best = p
-        var bestD = Float.MAX_VALUE
-        for (i in p - 16..p + 16) {
-            val d = abs(y - lensRowY(i))
-            if (d < bestD) {
-                best = i
-                bestD = d
-            }
-        }
-        return best
-    }
-
-    /** True when the name of lens row [i] is in view and covers ([x], [y]). */
-    private fun onLensName(i: Int, x: Float, y: Float): Boolean {
-        val dy = (i - pos) * LENS_GAP
-        val l = 70 + 60 * ls
-        val ad = abs(dy)
-        if (ad >= l) return false
-        val chars = when {
-            scrub != null -> 1
-            ob == Step.THEME -> THEME_NAMES[mod(i, THEMES.size)].length
-            else -> dialApps.getOrNull(mod(i, max(1, dialApps.size)))?.display?.length ?: return false
-        }
-        val t = 1 - ad / l
-        val s = 1 + .7f * t * t * ls + if (i == pos.roundToInt()) .15f else 0f
-        val xr = LX - 18 - 8 * t * ls
-        val mx = mirX(x)
-        return mx > xr - chars * CH * s - 8 && mx < xr + 8 && abs(y - lensRowY(i)) < 13 * s
-    }
-
-    /** The readout layout shows the selected name, or the letter while you scrub. */
-    private fun followReadout() {
-        if (kind != Kind.Readout || ob != null || hear != null) return
-        val letters = scrub
-        if (letters != null) {
-            clockJob?.cancel()
-            readName = true
-            readout.set(letters[mod(pos.roundToInt(), letters.size)], 2, 0, true, SystemClock.uptimeMillis(), false)
-            run()
-        } else {
-            showName()
-        }
-    }
-
-    private fun showName() {
-        val app = curApp() ?: return
-        clockJob?.cancel()
-        readName = true
-        readout.set(app.display, 1, 3, true, SystemClock.uptimeMillis(), false)
-        run()
-    }
-
-    private fun showClock(instant: Boolean = false) {
-        clockJob?.cancel()
-        readName = false
-        readout.set(clockText(), 2, 0, false, SystemClock.uptimeMillis(), instant)
-        if (layout.grid) run()
-    }
-
-    private fun scheduleClock() {
-        clockJob?.cancel()
-        clockJob = scope.launch {
-            delay(1600)
-            if (drag == null && spin == Spin.Idle && open == null) showClock()
-        }
-    }
-
-    private fun clockText(): String {
-        val c = Calendar.getInstance()
-        val h = if (host.is24Hour()) c.get(Calendar.HOUR_OF_DAY).toString().padStart(2, '0')
-        else (c.get(Calendar.HOUR).takeIf { it != 0 } ?: 12).toString()
-        return h + ":" + c.get(Calendar.MINUTE).toString().padStart(2, '0')
-    }
 
     // Gestures. All coordinates are design units.
 
@@ -616,12 +471,8 @@ class LauncherState(
     private fun mirX(x: Float) = if (left) W - x else x
 
     private fun zoneAt(x: Float, y: Float): Zone {
-        if (kind == Kind.Lens) {
-            if (!onLens(x, y)) return Zone.Empty
-            return if (lensRowAt(y) == pos.roundToInt()) Zone.Selected else Zone.Dial
-        }
         if (y < 200 || y > hd - 102) return Zone.Empty
-        val g = Geo(radius, cy, layout.ax)
+        val g = Geo(radius, cy)
         val dx = g.cx - mirX(x)
         val dy = y - cy
         val dist = hypot(dx, dy)
@@ -641,12 +492,6 @@ class LauncherState(
         drag = d
         spin = Spin.Drag
         vel = 0f
-        // The lens grows under the finger.
-        if (kind == Kind.Lens) {
-            lsJob?.cancel()
-            lsT = 1f
-        }
-        if (kind == Kind.Readout && ob == null && scrub == null) showName()
         if (zone != Zone.None) {
             press = Press(++seq, x, y)
             lpJob?.cancel()
@@ -664,7 +509,7 @@ class LauncherState(
             d.moved = true
             cancelPress()
         }
-        pos -= (y - d.y) / if (kind == Kind.Lens) LENS_GAP else GAP
+        pos -= (y - d.y) / GAP
         d.y = y
         val t = SystemClock.uptimeMillis()
         d.samples.addLast(t to pos)
@@ -675,7 +520,6 @@ class LauncherState(
         cancelPress()
         val d = drag ?: return
         drag = null
-        if (kind == Kind.Lens) lsT = .5f
         if (d.scrub) {
             endScrub()
             return
@@ -699,7 +543,6 @@ class LauncherState(
         cancelPress()
         val d = drag ?: return
         drag = null
-        if (kind == Kind.Lens) lsT = .5f
         if (d.scrub) {
             endScrub()
             return
@@ -712,17 +555,11 @@ class LauncherState(
     fun onWheel(dy: Float) {
         if (blocked() || scrub != null) return
         pos += dy.coerceIn(-140f, 140f) / 90f
-        if (kind == Kind.Lens) {
-            lsJob?.cancel()
-            lsT = 1f
-        }
-        if (kind == Kind.Readout && ob == null && !readName) showName()
         vel = 0f
         spin = Spin.Wheel
         wheelJob?.cancel()
         wheelJob = scope.launch {
             delay(110)
-            if (kind == Kind.Lens) lsT = .5f
             target = pos.roundToInt().toFloat()
             spin = Spin.Settle
             run()
@@ -744,7 +581,6 @@ class LauncherState(
             return
         }
         drag = null
-        if (kind == Kind.Lens) lsT = .5f
         target = pos.roundToInt().toFloat()
         spin = Spin.Settle
         fb.click(true)
@@ -754,38 +590,15 @@ class LauncherState(
     }
 
     private fun tapAt(x: Float, y: Float) {
-        if (kind == Kind.Lens) {
-            if (!onLens(x, y)) return
-            val k = lensRowAt(y)
-            val named = onLensName(k, x, y)
-            // Off the column, only a name is a target.
-            if (!named && mirX(x) < LX - 16) return
-            when {
-                k == pos.roundToInt() -> if (ob == null) launchSelected()
-                named && ob == null -> launchAt(k)
-                else -> {
-                    fb.tick()
-                    target = k.toFloat()
-                    spin = Spin.Settle
-                }
-            }
-            return
-        }
-        // The readout layout opens the selected app from the readout too.
-        if (kind == Kind.Readout && ob == null && y > readY - 10 && y < readY + 90) {
-            launchSelected()
-            return
-        }
         if (y < 200 || y > hd - 102) return
-        val g = Geo(radius, cy, layout.ax)
+        val g = Geo(radius, cy)
         val dx = g.cx - mirX(x)
         val dy = y - cy
         if (abs(hypot(dx, dy) - g.r) > 210) return
         val k = (pos + atan2(dy, dx) / g.step).roundToInt()
         val cur = pos.roundToInt()
         if (abs(k - pos) > g.span) return
-        // The readout dial has no names to tap, so a tap on another row only turns the dial.
-        if (ob == null && (k == cur || kind != Kind.Readout)) {
+        if (ob == null) {
             if (k == cur) launchSelected() else launchAt(k)
         } else if (k != cur) {
             fb.tick()
@@ -810,7 +623,6 @@ class LauncherState(
         fb.letter()
         fb.click(true)
         scrub = letters
-        followReadout()
     }
 
     private fun endScrub() {
@@ -829,7 +641,6 @@ class LauncherState(
         lastIdx = scrubBase
         target = (scrubBase + d).toFloat()
         spin = Spin.Settle
-        followReadout()
         run()
     }
 
@@ -880,7 +691,6 @@ class LauncherState(
             persist()
             host.cleanWallpapers(customWall)
             syncWallpaper()
-            showClock()
         }
         run()
     }
@@ -888,11 +698,10 @@ class LauncherState(
     /** Copies the theme to the lock screen when the theme or the side changed since the last copy. */
     private fun syncWallpaper() {
         if (!lockWall) return
-        val grid = layout.grid
-        val custom = if (grid) null else customWall
-        val key = "${THEMES[cfg.theme].name}|${cfg.side}|${if (grid) "grid" else custom ?: "theme"}"
+        val custom = customWall
+        val key = "${THEMES[cfg.theme].name}|${cfg.side}|${custom ?: "theme"}"
         if (prefs.appliedWall == key) return
-        host.setWallpaper(THEMES[cfg.theme], PALETTES[cfg.theme], left, custom, grid) { ok ->
+        host.setWallpaper(THEMES[cfg.theme], PALETTES[cfg.theme], left, custom) { ok ->
             if (ok) prefs.appliedWall = key else showToast("can't set the lock screen")
         }
     }
@@ -939,7 +748,6 @@ class LauncherState(
                 customWall = prevCustom
                 host.cleanWallpapers(prevCustom)
                 ob = null
-                showClock(instant = true)
                 syncRadius()
             }
         } else if (o > Step.SHAPE) {
@@ -950,7 +758,6 @@ class LauncherState(
     fun setLayout(i: Int) {
         tap()
         cfg = cfg.copy(layout = i)
-        showClock(instant = true)
         syncRadius()
     }
 
@@ -1347,7 +1154,6 @@ class LauncherState(
     private fun endHearing() {
         hear = null
         voiceLevel = 0f
-        if (layout.grid && open == null) showClock()
     }
 
     private fun systemVoice() {
@@ -1359,7 +1165,6 @@ class LauncherState(
         heardApp = null
         voiceLevel = 0f
         hear = Hear.Wait
-        if (layout.grid) showClock()
         host.hear(hearEvents)
     }
 
@@ -1411,20 +1216,12 @@ class LauncherState(
         }
     }
 
-    /** The words name [app] so far. The dial turns to it, and the grid readout shows its name. */
+    /** The words name [app] so far. The dial turns to it. */
     private fun found(app: AppEntry?) {
         if (app?.key == heardApp?.key) return
         heardApp = app
-        if (app == null) {
-            if (layout.grid) showClock()
-            return
-        }
+        if (app == null) return
         fb.tick()
-        if (layout.grid) {
-            clockJob?.cancel()
-            readName = true
-            readout.set(app.display, 1, 3, true, SystemClock.uptimeMillis(), false)
-        }
         val row = dialRow(app)
         if (row != null) {
             target = row.toFloat()
@@ -1458,7 +1255,6 @@ class LauncherState(
         if (names.isEmpty() || blocked()) return
         val app = names.firstNotNullOfOrNull { n -> Voice.match(n, repo.apps) { it.label } }
         if (app == null) {
-            if (layout.grid) showClock()
             openSearch()
             query = names.first()
             return
@@ -1470,12 +1266,9 @@ class LauncherState(
         if (row != null) {
             launchAt(row)
         } else {
-            openApp(app.display, app.key, app.pkgUser, if (layout.grid) readFrom() else from, "", false) { host.launchApp(app, it) }
+            openApp(app.display, app.key, app.pkgUser, from, "", false) { host.launchApp(app, it) }
         }
     }
-
-    /** The name in the grid readout. An app that is not on the dial lifts off from here. */
-    private fun readFrom() = Pose(RX, readY + 6.5f * RF, 0f, 20f / 44f, 0f)
 
     // Quick button: one app in the bottom corner on the dial side.
 
@@ -1535,7 +1328,7 @@ class LauncherState(
         val app = curApp() ?: return null
         val n = app.display.length
         val s = selScale(n)
-        val p = labelPose(0f, n, s, Geo(radius, cy, layout.ax), layout.markers, left)
+        val p = labelPose(0f, n, s, Geo(radius, cy), layout.markers, left)
         return Pose(p.x, p.y, p.rot, s * 15f / 44f, p.tx)
     }
 
@@ -1553,7 +1346,7 @@ class LauncherState(
         val d = k - pos
         val n = app.display.length
         val s = labelScale(abs(d), n)
-        val p = labelPose(d, n, s, Geo(radius, cy, layout.ax), layout.markers, left)
+        val p = labelPose(d, n, s, Geo(radius, cy), layout.markers, left)
         target = k.toFloat()
         spin = Spin.Settle
         openApp(app.display, app.key, app.pkgUser, Pose(p.x, p.y, p.rot, s * 15f / 44f, p.tx), "", true) {
@@ -1568,7 +1361,6 @@ class LauncherState(
         from: Pose,
         sub: String,
         fromDial: Boolean,
-        origin: Pair<Float, Float>? = null,
         action: (Rect?) -> Unit,
     ) {
         if (open != null) return
@@ -1579,10 +1371,7 @@ class LauncherState(
             opened = opened + (pkgUser to t)
             prefs.markOpened(pkgUser, t)
         }
-        val grid = layout.grid
-        // The grid ripple starts at the notch, or at the start of the row that opened the app.
-        val (rx, ry) = origin ?: if (fromDial) notch() else (from.x + 6f) to from.y
-        val o = OpenApp(++seq, label, key, sub, from, fromDial, Phase.From, grid, rx, ry)
+        val o = OpenApp(++seq, label, key, sub, from, fromDial, Phase.From)
         open = o
         search = false
         menu = null
@@ -1593,18 +1382,12 @@ class LauncherState(
             if (open?.id == o.id && open?.phase == Phase.From) open = o.copy(phase = Phase.In)
         }
         try {
-            action(if (grid) dotBounds(rx, ry) else boundsOf(from, label))
+            action(boundsOf(from, label))
         } catch (e: Exception) {
             open = null
             showToast("can't open $label")
         }
     }
-
-    /** The notch in screen units. */
-    private fun notch(): Pair<Float, Float> = mirX(layout.ax) to cy
-
-    private fun dotBounds(x: Float, y: Float) =
-        Rect(((x - 12) * k).roundToInt(), ((y - 12) * k).roundToInt(), ((x + 12) * k).roundToInt(), ((y + 12) * k).roundToInt())
 
     private fun boundsOf(p: Pose, label: String): Rect {
         val w = label.length * 24.64f * p.s
@@ -1628,10 +1411,8 @@ class LauncherState(
         val back = if (o.fromDial && curApp()?.key == o.key) selectedPose() ?: o.from else o.from
         open = o.copy(phase = Phase.Out, from = back)
         scope.launch {
-            // The grid ripple waits 140 ms, then shrinks for 540 ms.
-            delay(if (o.ripple) 680 else 440)
+            delay(440)
             if (open?.id == o.id) open = null
-            if (readName && drag == null) scheduleClock()
         }
     }
 

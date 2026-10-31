@@ -101,7 +101,6 @@ import androidx.core.view.WindowCompat
 import app.detent.launcher.Corner
 import app.detent.launcher.Hear
 import app.detent.launcher.Ease
-import app.detent.launcher.Kind
 import app.detent.launcher.LauncherState
 import app.detent.launcher.PALETTES
 import app.detent.launcher.Palette
@@ -177,19 +176,12 @@ private fun Home(s: LauncherState) {
             .focusRequester(focus).focusable()
             .onKeyEvent { it.type == KeyEventType.KeyDown && s.key(it.key) },
     ) {
-        // The grid layouts draw the whole screen as dots, with no wallpaper.
-        val grid = s.layout.grid
         val wave = rememberVoiceWave(s)
-        if (!grid) Wallpaper(THEMES[wall], pal, s.left, s.customWall)
+        Wallpaper(THEMES[wall], pal, s.left, s.customWall)
         GestureLayer(s)
-        if (grid) {
-            DotGrid(s, pal, wave)
-        } else {
-            Clock(s, pal)
-            DialCanvas(s, pal, wave)
-        }
-        // The readout layout shows the letter in its readout.
-        if (s.kind != Kind.Readout) ScrubLetter(s, pal)
+        Clock(s, pal)
+        DialCanvas(s, pal, wave)
+        ScrubLetter(s, pal)
         PressRing(s, pal)
         AppsButton(s, pal)
         when (s.corner) {
@@ -693,8 +685,6 @@ private fun MenuItem(label: String, color: Color, onClick: () -> Unit) {
 private fun AppSheet(s: LauncherState, pal: Palette) {
     val u = LocalUnits.current
     val o = s.open ?: return
-    // The grid layouts open apps with their dot ripple.
-    if (o.ripple) return
     val shown = o.phase == Phase.In
     val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(280), label = "sheetAlpha")
     val scale by animateFloatAsState(if (shown) 1f else .985f, tween(400, easing = Ease), label = "sheetScale")
@@ -712,7 +702,6 @@ private fun AppSheet(s: LauncherState, pal: Palette) {
 private fun Title(s: LauncherState, pal: Palette) {
     val u = LocalUnits.current
     val o = s.open ?: return
-    if (o.ripple) return
     val measurer = rememberTextMeasurer()
     val style = remember(u) { textStyle(u, 44f, pal.accent, FontWeight.Light, spacing = -.04f) }
     val prog = remember(o.id) { Animatable(0f) }

@@ -35,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import app.detent.launcher.Corner
 import app.detent.launcher.Ease
-import app.detent.launcher.Kind
 import app.detent.launcher.LAYOUTS
 import app.detent.launcher.LauncherState
 import app.detent.launcher.Palette
@@ -47,11 +46,10 @@ import kotlinx.coroutines.launch
 
 private class Copy(val counter: String, val title: String, val body: String)
 
-private fun copy(step: Int, custom: Boolean, grid: Boolean) = when (step) {
+private fun copy(step: Int, custom: Boolean) = when (step) {
     Step.WELCOME -> Copy("", "dial", "your apps sit on a wheel at the edge. turn it to choose, tap to open.")
     Step.SHAPE -> Copy("1 / 5", "shape", "pick a layout and a side, then turn the dial to try it.")
-    Step.THEME -> if (grid) Copy("2 / 5", "theme", "turn the dial to pick the colours of the grid.")
-    else if (custom) Copy("2 / 5", "theme", "turn the dial to pick the colours. your wallpaper stays.")
+    Step.THEME -> if (custom) Copy("2 / 5", "theme", "turn the dial to pick the colours. your wallpaper stays.")
     else Copy("2 / 5", "theme", "turn the dial to try one. each brings its own wallpaper.")
     Step.APPS -> Copy("3 / 5", "apps", "pick what goes on the dial. the rest stay one search away.")
     Step.FEEL -> Copy("4 / 5", "feel", "a click and a tick for every detent. dots mark new notifications. the lock screen can use the theme.")
@@ -63,7 +61,7 @@ private fun copy(step: Int, custom: Boolean, grid: Boolean) = when (step) {
 fun Onboarding(s: LauncherState, pal: Palette, theme: ThemeDef) {
     val u = LocalUnits.current
     val step = s.ob ?: return
-    val c = copy(step, s.customWall != null, s.layout.grid)
+    val c = copy(step, s.customWall != null)
 
     // Each step fades in and rises 8 units.
     val fade = remember { Animatable(1f) }
@@ -124,8 +122,7 @@ fun Onboarding(s: LauncherState, pal: Palette, theme: ThemeDef) {
                             Chip(g, theme.group == g, pal, { s.jumpGroup(g) }, weight = FontWeight.Medium)
                         }
                     }
-                    // The grid layouts have no wallpaper.
-                    if (!s.layout.grid) Row(horizontalArrangement = gap) {
+                    Row(horizontalArrangement = gap) {
                         Chip("theme wallpaper", s.customWall == null, pal, { s.useThemeWallpaper() })
                         Chip("your wallpaper", s.customWall != null, pal, { s.pickWallpaper() })
                     }
@@ -152,9 +149,7 @@ fun Onboarding(s: LauncherState, pal: Palette, theme: ThemeDef) {
             }
             val pick = when (step) {
                 Step.SHAPE -> LAYOUTS[s.cfg.layout].name
-                // The readout dial has no names, so the theme name goes here.
-                Step.THEME -> (if (s.kind == Kind.Readout) theme.name + " · " else "") +
-                    theme.group + " · " + if (theme.light) "light" else "dark"
+                Step.THEME -> theme.group + " · " + if (theme.light) "light" else "dark"
                 Step.FEEL -> when {
                     s.dots && !s.notifAccess -> "dots need notification access"
                     s.lockWall -> "the lock screen uses the theme"

@@ -13,7 +13,8 @@ class Prefs(ctx: Context) {
     fun load(): Saved? {
         if (!sp.getBoolean("done", false)) return null
         val cfg = Cfg(
-            layout = sp.getInt("layout", 0).coerceIn(LAYOUTS.indices),
+            // Layouts 6 to 8 were the grid layouts. A setup saved on one of them gets the default layout.
+            layout = sp.getInt("layout", 0).takeIf { it in LAYOUTS.indices } ?: 0,
             theme = sp.getInt("theme", 0).coerceIn(THEMES.indices),
             side = if (sp.getString("side", "right") == "left") Side.Left else Side.Right,
         )

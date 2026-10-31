@@ -18,7 +18,6 @@ import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import android.text.format.DateFormat
 import android.util.DisplayMetrics
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -169,7 +168,6 @@ class MainActivity : ComponentActivity(), Host {
         if (detail == null || !open(detail)) open(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
     }
 
-    override fun is24Hour() = DateFormat.is24HourFormat(this)
 
     private fun screenSize(): Pair<Int, Int> = if (Build.VERSION.SDK_INT >= 30) {
         windowManager.maximumWindowMetrics.bounds.let { it.width() to it.height() }
@@ -183,13 +181,12 @@ class MainActivity : ComponentActivity(), Host {
         pal: Palette,
         left: Boolean,
         custom: String?,
-        grid: Boolean,
         done: (Boolean) -> Unit,
     ) {
         val (w, h) = screenSize()
         val app = applicationContext
         thread(name = "detent-wallpaper") {
-            val ok = runCatching { SystemWallpaper.apply(app, theme, pal, left, custom, grid, w, h) }.isSuccess
+            val ok = runCatching { SystemWallpaper.apply(app, theme, pal, left, custom, w, h) }.isSuccess
             runOnUiThread { done(ok) }
         }
     }

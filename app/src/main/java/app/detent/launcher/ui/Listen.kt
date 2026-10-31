@@ -34,7 +34,7 @@ import kotlin.math.exp
 import kotlin.math.pow
 import kotlin.math.sin
 
-/** The voice animation that the dial, the grid, and the readout share. The values ease, so the layouts fade in and out of it. */
+/** The voice animation of the dial. The values ease, so the dial fades in and out of it. */
 class VoiceWave {
     /** Seconds since Detent started to listen. */
     var t by mutableFloatStateOf(0f)
@@ -50,9 +50,6 @@ class VoiceWave {
 
     /** 1 while the speech service turns the voice into words. */
     var think by mutableFloatStateOf(0f)
-
-    /** 1 while the words name no app. The grid readout then shows the voice bars in place of a name. */
-    var bars by mutableFloatStateOf(0f)
 
     /** How much the voice swells a mark that sits [d] apps from the notch. */
     fun swell(d: Float): Float {
@@ -87,14 +84,12 @@ fun rememberVoiceWave(s: LauncherState): VoiceWave {
                 w.level += ((if (h == Hear.Talk) s.voiceLevel else 0f) - w.level) * (1f - .75f.pow(dt / 16f))
                 w.listen += ((if (h == Hear.Wait || h == Hear.Talk) 1f else 0f) - w.listen) * e
                 w.think += ((if (h == Hear.Think) 1f else 0f) - w.think) * e
-                w.bars += ((if (h != null && s.heardApp == null) 1f else 0f) - w.bars) * e
             }
         }
         w.on = 0f
         w.level = 0f
         w.listen = 0f
         w.think = 0f
-        w.bars = 0f
     }
     return w
 }

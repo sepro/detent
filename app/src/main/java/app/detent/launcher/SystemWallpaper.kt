@@ -25,38 +25,17 @@ object SystemWallpaper {
         pal: Palette,
         left: Boolean,
         custom: String?,
-        grid: Boolean,
         width: Int,
         height: Int,
     ) {
         val wm = WallpaperManager.getInstance(ctx)
         check(wm.isWallpaperSupported && wm.isSetWallpaperAllowed) { "wallpaper changes are not allowed" }
-        val bitmap = if (grid) renderGrid(pal, width, height) else render(ctx, theme, pal, left, custom, width, height)
+        val bitmap = render(ctx, theme, pal, left, custom, width, height)
         try {
             wm.setBitmap(bitmap, null, true, WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK)
         } finally {
             bitmap.recycle()
         }
-    }
-
-    /** The resting dot grid of the grid layouts, without the dial. */
-    fun renderGrid(pal: Palette, w: Int, h: Int): Bitmap {
-        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val c = Canvas(out)
-        c.drawColor(pal.bg.toArgb())
-        val k = w / W
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.color = pal.fg.copy(alpha = .16f).toArgb()
-        var y = GO
-        while (y < h / k + G) {
-            var x = GO
-            while (x < W) {
-                c.drawCircle(x * k, y * k, 1.2f * k, paint)
-                x += G
-            }
-            y += G
-        }
-        return out
     }
 
     /** The same layers the home screen draws behind the dial. [custom] is the path of the user's own wallpaper. */
