@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="docs/media/detent-promo.mp4"><img src="docs/media/home.jpg" alt="Detent on a phone with the retro-82 theme. The apps sit on a dial at the right edge of the screen." width="100%"></a>
+  <a href="docs/media/detent-promo.mp4"><img src="docs/media/home.jpg" alt="Detent on a phone with the koi-watercolor theme. The apps sit on a dial at the right edge of the screen." width="100%"></a>
 </p>
 
 # Detent
