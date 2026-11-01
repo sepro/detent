@@ -159,6 +159,7 @@ Caution: if your phone has a build signed with a different key, Android refuses 
 
 ## Credits
 
+- This project is a fork of [Detent](https://github.com/bjarneo/detent) by [bjarneo](https://github.com/bjarneo). The dial, the gestures, the layouts, the themes, and the web demo all started there. This fork has since moved away from the original, for example with the koi-watercolor theme and new defaults. Thanks to bjarneo for the original app and for sharing it under the MIT license.
 - The wallpapers and the dot-hand art come from the [Omarchy](https://github.com/basecamp/omarchy) themes.
 - The font is [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), under the SIL Open Font License 1.1. See [`licenses/JetBrainsMono-OFL.txt`](licenses/JetBrainsMono-OFL.txt).
 
