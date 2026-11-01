@@ -14,20 +14,25 @@ class Prefs(ctx: Context) {
         if (!sp.getBoolean("done", false)) return null
         val cfg = Cfg(
             // Layouts 6 to 8 were the grid layouts. A setup saved on one of them gets the default layout.
-            layout = sp.getInt("layout", 0).takeIf { it in LAYOUTS.indices } ?: 0,
+            layout = sp.getInt("layout", 0).takeIf { it in LAYOUTS.indices } ?: Cfg().layout,
             theme = sp.getInt("theme", 0).coerceIn(THEMES.indices),
             side = if (sp.getString("side", "right") == "left") Side.Left else Side.Right,
         )
         return Saved(cfg, sp.getStringSet("apps", null).orEmpty().toSet(), sp.getInt("pos", 0))
     }
 
-    fun save(cfg: Cfg, keys: Set<String>, pos: Int) = sp.edit {
-        putBoolean("done", true)
-        putInt("layout", cfg.layout)
-        putInt("theme", cfg.theme)
-        putString("side", if (cfg.side == Side.Left) "left" else "right")
-        putStringSet("apps", HashSet(keys))
-        putInt("pos", pos)
+    fun save(cfg: Cfg, keys: Set<String>, pos: Int) {
+        // The corner default depends on "done", so it is fixed in place before "done" turns true.
+        val cornerToKeep = if (sp.contains("corner")) null else corner
+        sp.edit {
+            cornerToKeep?.let { putString("corner", it.name.lowercase()) }
+            putBoolean("done", true)
+            putInt("layout", cfg.layout)
+            putInt("theme", cfg.theme)
+            putString("side", if (cfg.side == Side.Left) "left" else "right")
+            putStringSet("apps", HashSet(keys))
+            putInt("pos", pos)
+        }
     }
 
     fun savePos(pos: Int) = sp.edit { putInt("pos", pos) }
@@ -61,7 +66,12 @@ class Prefs(ctx: Context) {
 
     /** What the corner button holds. */
     var corner: Corner
-        get() = Corner.of(sp.getString("corner", null))
+        get() {
+            val saved = sp.getString("corner", null)
+            // A fresh install searches the web from the corner. Setups saved before the dock step keep the quick app.
+            if (saved == null && !sp.getBoolean("done", false)) return Corner.Web
+            return Corner.of(saved)
+        }
         set(v) = sp.edit { putString("corner", v.name.lowercase()) }
 
     /** Key of the app on the quick button, or null when the button has no app. */

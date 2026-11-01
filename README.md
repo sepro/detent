@@ -40,7 +40,7 @@ adb install detent.apk
 | Tap `search` in the corner | Type words and tap go. Google shows the results in your browser. Your 5 last web searches sit below the field. Tap one to search again. Tap the cross to remove it, or tap `clear`. |
 | Tap the mic button and say an app name | The dial swells with your voice, and your words show at the top. When the words name one app, the dial turns to it and the app opens. If not, search opens with the words. |
 
-The quick button sits in the bottom corner on the dial side. It holds one app that you need fast, such as the camera. The mic button sits between `apps` and the quick button. On the `dock` step, you can hide the mic button, and put a web `search` button or nothing in the corner.
+The corner button sits in the bottom corner on the dial side. By default it is a web `search` button. On the `dock` step, you can give it one app that you need fast, such as the camera, or leave the corner empty. The mic button sits between `apps` and the corner button, and is on by default. You can hide it on the same step.
 
 With a hardware keyboard, `j` and `k` turn the dial. `l` or `Enter` opens the app. `/` opens search. `Esc` goes back.
 
@@ -59,15 +59,15 @@ Detent has 5 layouts. Each layout puts a radial dial over the wallpaper. Each na
 
 | Layout | Look |
 | --- | --- |
-| `soft · radial · double` | The default. Dots swell toward the notch, with a fainter inner arc. |
+| `soft · radial · double` | Dots swell toward the notch, with a fainter inner arc. |
 | `round · radial · double` | The same dots on a tighter curve. |
 | `soft · radial · ticks` | Hairline ticks on a thin rim. |
 | `flat · radial · dots` | A dot matrix on a wide curve. |
-| `flat · radial · nodes` | Small nodes on a wide curve. |
+| `flat · radial · nodes` | The default. Small nodes on a wide curve. |
 
-The dial can sit on the right or the left edge.
+The dial can sit on the right edge (the default) or the left edge.
 
-Detent has 28 themes. The 4 phone themes are dusk, ember, signal, and paper. They use a tinted dot-hand art. The 23 Omarchy themes each bring their own wallpaper. The sepro group holds koi-watercolor, a dark teal theme with a koi pond wallpaper. On the theme step, the colours change on each click of the dial. The wallpaper loads when the dial stops.
+Detent has 28 themes. The 4 phone themes are dusk, ember, signal, and paper. They use a tinted dot-hand art. The 23 Omarchy themes each bring their own wallpaper. The sepro group holds koi-watercolor, a dark teal theme with a koi pond wallpaper. It is the default theme. On the theme step, the colours change on each click of the dial. The wallpaper loads when the dial stops.
 
 ### Use your own wallpaper
 
@@ -99,7 +99,7 @@ The `dock` step sets the buttons at the bottom of the home screen:
 | --- | --- |
 | `mic` | Shows the mic button. |
 | `quick app` | The corner button opens one app. |
-| `web search` | The corner button searches the web. |
+| `web search` | The corner button searches the web. This is the default. |
 | `none` | The corner stays empty. |
 
 If Android shows "Restricted setting" when you allow notification access, open the app info for Detent. Tap ⋮, then `Allow restricted settings`. Then try again.

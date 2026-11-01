@@ -1,5 +1,5 @@
 // Connects the page to the dials: the demo, the layout previews, and the theme swatches.
-import { Dial, LAYOUTS, THEMES, palette, css } from './dial.js';
+import { Dial, LAYOUTS, THEMES, DEFAULT_LAYOUT, DEFAULT_THEME, palette, css } from './dial.js';
 
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -10,9 +10,11 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
 let theme = THEMES.findIndex(t => t.name === store.get('detent.theme'));
-if (theme < 0) theme = matchMedia('(prefers-color-scheme: light)').matches ? THEMES.findIndex(t => t.name === 'paper') : 0;
-let layout = Number(store.get('detent.layout'));
-if (!(layout >= 0 && layout < LAYOUTS.length)) layout = 0;
+if (theme < 0) theme = DEFAULT_THEME;
+// Number(null) is 0, so a missing layout must be caught before the range check.
+const savedLayout = store.get('detent.layout');
+let layout = savedLayout === null ? NaN : Number(savedLayout);
+if (!(layout >= 0 && layout < LAYOUTS.length)) layout = DEFAULT_LAYOUT;
 let left = store.get('detent.side') === 'left';
 
 const said = $('#said');
@@ -36,7 +38,7 @@ const previews = $$('.card canvas').map((c, i) => new Dial(c, { theme, layout: i
 const dials = [demo, ...previews];
 
 // Theme swatches.
-for (const group of ['phone', 'omarchy']) {
+for (const group of ['phone', 'omarchy', 'sepro']) {
   const box = $(`.swatches[data-group="${group}"]`);
   THEMES.forEach((t, i) => {
     if (t.group !== group) return;

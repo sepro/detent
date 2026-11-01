@@ -21,8 +21,9 @@ export const LAYOUTS = [
 ];
 
 const rgb = c => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
-const T = (name, group, light, bg, fg, accent, wall, hand = 0x504945, wallLeft = null) =>
-  ({ name, group, light, bg: rgb(bg), fg: rgb(fg), accent: rgb(accent), wall, hand: rgb(hand), wallLeft });
+const T = (name, group, light, bg, fg, accent, wall, hand = 0x504945, wallLeft = null, btnFg = null) =>
+  ({ name, group, light, bg: rgb(bg), fg: rgb(fg), accent: rgb(accent), wall, hand: rgb(hand), wallLeft,
+    btnFg: btnFg === null ? null : rgb(btnFg) });
 const om = (name, light, bg, fg, accent) => T(name, 'omarchy', light, bg, fg, accent, `walls/${name}.webp`);
 
 export const THEMES = [
@@ -54,7 +55,13 @@ export const THEMES = [
   om('tokyo-night', false, 0x1a1b26, 0xa9b1d6, 0x7aa2f7),
   T('vantablack', 'omarchy', false, 0x000000, 0xffffff, 0x8d8d8d, null, 0x505050),
   om('white', true, 0xffffff, 0x000000, 0x6e6e6e),
+  // New themes go at the end, as in the launcher.
+  T('koi-watercolor', 'sepro', false, 0x121212, 0xd8e0dc, 0x5fa3ac, 'walls/koi-watercolor.webp', 0x504945, null, 0x999e9b),
 ];
+
+// A fresh setup in the launcher starts here: the nodes layout and the koi-watercolor theme.
+export const DEFAULT_LAYOUT = LAYOUTS.findIndex(l => l.name === 'flat · radial · nodes');
+export const DEFAULT_THEME = THEMES.findIndex(t => t.name === 'koi-watercolor');
 
 const mix = (a, b, t) => a.map((v, i) => Math.round(v * t + b[i] * (1 - t)));
 export const css = (c, a = 1) => a === 1 ? `rgb(${c[0]},${c[1]},${c[2]})` : `rgba(${c[0]},${c[1]},${c[2]},${a})`;
@@ -66,7 +73,7 @@ function luminance(c) {
 
 export function palette(t) {
   return {
-    light: t.light, bg: t.bg, fg: t.fg, accent: t.accent, hand: t.hand,
+    light: t.light, bg: t.bg, fg: t.fg, accent: t.accent, hand: t.hand, btnFg: t.btnFg ?? t.fg,
     onAccent: luminance(t.accent) > .33 ? [17, 17, 17] : [255, 255, 255],
     muted: mix(t.fg, t.bg, .5), muted2: mix(t.fg, t.bg, .68),
     sheet: mix(t.fg, t.bg, .05), card: mix(t.fg, t.bg, .1),
@@ -76,7 +83,9 @@ export function palette(t) {
 export const APPS = ['calculator', 'calendar', 'camera', 'chrome', 'clock', 'contacts', 'drive', 'files', 'gmail',
   'keep', 'maps', 'messages', 'music', 'phone', 'photos', 'play store', 'settings', 'weather', 'youtube'];
 
-const QUICK = 'camera';
+// The corner button searches the web, as in a fresh setup of the launcher.
+const CORNER_LABEL = 'search';
+const CORNER_OPENS = 'web search';
 
 const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
@@ -527,11 +536,11 @@ export class Dial {
     this.run();
   }
 
-  // The quick button sits in the bottom corner on the dial side. In the demo it holds the camera.
+  // The corner button sits in the bottom corner on the dial side. In the demo it searches the web.
 
   quickBox() {
     this.font(13, 400, 0);
-    const w = 14 + 14 + 10 + this.g.measureText(QUICK).width + 18;
+    const w = 14 + 14 + 10 + this.g.measureText(CORNER_LABEL).width + 18;
     return { x: this.left ? 24 : W - 24 - w, y: SEARCH_Y, w, h: 44 };
   }
 
@@ -544,8 +553,8 @@ export class Dial {
   openQuick() {
     const b = this.quickBox();
     // The sheet grows from the label.
-    this.open = { name: QUICK, t: 0, rx: b.x + 38, ry: b.y + b.h / 2 };
-    this.onChange({ open: QUICK });
+    this.open = { name: CORNER_OPENS, t: 0, rx: b.x + 38, ry: b.y + b.h / 2 };
+    this.onChange({ open: CORNER_OPENS });
     this.run();
   }
 
@@ -656,15 +665,19 @@ export class Dial {
     g.strokeStyle = css(pal.fg, .22);
     g.lineWidth = 1;
     g.stroke();
-    g.strokeStyle = css(pal.fg);
+    this.searchIcon(x + 14, y + 15);
+    this.text('search', x + 38, y + h / 2, 13, 400, pal.btnFg, a, 0);
+  }
+
+  searchIcon(ix, iy) {
+    const g = this.g;
+    g.strokeStyle = css(this.pal.btnFg);
     g.lineWidth = 1.5;
-    const ix = x + 14, iy = y + 15;
     g.beginPath();
     g.arc(ix + 5, iy + 5, 4.25, 0, TAU);
     g.moveTo(ix + 8.5, iy + 8.5);
     g.lineTo(ix + 12.74, iy + 12.74);
     g.stroke();
-    this.text('search', ix + 24, y + h / 2, 13, 400, pal.fg, a, 0);
   }
 
   drawVoice() {
@@ -679,7 +692,7 @@ export class Dial {
     g.strokeStyle = css(pal.fg, .22);
     g.lineWidth = 1;
     g.stroke();
-    g.strokeStyle = css(pal.fg);
+    g.strokeStyle = css(pal.btnFg);
     g.lineWidth = 1.5;
     const ix = b.x + 15, iy = y + 15;
     g.beginPath();
@@ -705,9 +718,9 @@ export class Dial {
     g.strokeStyle = css(pal.fg, .22);
     g.lineWidth = 1;
     g.stroke();
+    this.searchIcon(b.x + 14, y + 15);
     g.globalAlpha = 1;
-    this.dot(b.x + 21, y + b.h / 2, 3.5, pal.fg, a);
-    this.text(QUICK, b.x + 38, y + b.h / 2, 13, 400, pal.fg, a, 0);
+    this.text(CORNER_LABEL, b.x + 38, y + b.h / 2, 13, 400, pal.btnFg, a, 0);
   }
 
   drawScrubLetter() {
