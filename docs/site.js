@@ -132,7 +132,7 @@ if (!reduced) {
   }, { threshold: .6 }).observe($('#dial'));
 }
 
-fetch('https://api.github.com/repos/bjarneo/detent/releases/latest')
+fetch('https://api.github.com/repos/sepro/detent/releases/latest')
   .then(r => r.ok ? r.json() : null)
   .then(j => { if (j && j.tag_name) $('#version').textContent = j.tag_name; })
   .catch(() => {});
