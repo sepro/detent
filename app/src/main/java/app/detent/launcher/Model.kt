@@ -56,7 +56,12 @@ val LAYOUTS = listOf(
     Layout("flat · radial · nodes", 560f, Markers.Nodes, 4),
 )
 
-data class Cfg(val layout: Int = 0, val theme: Int = 0, val side: Side = Side.Right)
+/** A fresh setup starts on the nodes layout and the koi-watercolor theme, with the dial on the right. */
+data class Cfg(
+    val layout: Int = LAYOUTS.indexOfFirst { it.name == "flat · radial · nodes" },
+    val theme: Int = THEMES.indexOfFirst { it.name == "koi-watercolor" },
+    val side: Side = Side.Right,
+)
 
 class ThemeDef(
     val name: String,

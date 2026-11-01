@@ -1,35 +1,19 @@
 /* The page takes the colours of the theme in the demo. site.js sets these values. */
 :root {
-  --bg: #1d2021;
-  --fg: #ebdbb2;
-  --accent: #fe8019;
-  --on-accent: #111111;
-  --muted: #84796a;
-  --muted2: #6a6359;
-  --card: #34352f;
-  --sheet: #282a29;
-  --rim: rgba(235, 219, 178, .14);
-  --rim2: rgba(235, 219, 178, .22);
-  --grid: rgba(235, 219, 178, .1);
+  /* The koi-watercolor theme, the default, so the page does not flash another theme before site.js runs. */
+  --bg: #121212;
+  --fg: #d8e0dc;
+  --accent: #5fa3ac;
+  --on-accent: #ffffff;
+  --muted: #757977;
+  --muted2: #999e9b;
+  --card: #262726;
+  --sheet: #1c1c1c;
+  --rim: rgba(216, 224, 220, .14);
+  --rim2: rgba(216, 224, 220, .22);
+  --grid: rgba(216, 224, 220, .1);
   --pw: max(250px, min(330px, 80vw, calc((100svh - 280px) * .4619)));
   color-scheme: dark;
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-themed]) {
-    --bg: #f1ede4;
-    --fg: #1c1a17;
-    --accent: #c2410c;
-    --on-accent: #ffffff;
-    --muted: #87837d;
-    --muted2: #a6a199;
-    --card: #dad6ce;
-    --sheet: #e6e2d9;
-    --rim: rgba(28, 26, 23, .14);
-    --rim2: rgba(28, 26, 23, .22);
-    --grid: rgba(28, 26, 23, .1);
-    color-scheme: light;
-  }
 }
 
 * { box-sizing: border-box; }

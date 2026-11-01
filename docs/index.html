@@ -11,7 +11,7 @@
   <meta property="og:url" content="https://bjarneo.github.io/detent/">
   <meta property="og:image" content="https://bjarneo.github.io/detent/media/home.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#1d2021">
+  <meta name="theme-color" content="#121212">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,11 +56,11 @@
             <button data-chip="3" aria-label="Layout 4">4</button>
             <button data-chip="4" aria-label="Layout 5">5</button>
           </div>
-          <span class="layout-name" id="layout-name">soft · radial · double</span>
+          <span class="layout-name" id="layout-name">flat · radial · nodes</span>
           <div class="row">
             <div class="stepper">
               <button id="theme-prev" aria-label="Previous theme">‹</button>
-              <span id="theme-name">dusk</span>
+              <span id="theme-name">koi-watercolor</span>
               <button id="theme-next" aria-label="Next theme">›</button>
             </div>
             <div class="seg" role="group" aria-label="Dial side">
@@ -84,12 +84,12 @@
         <div><dt>hold the app in the notch</dt><dd>A menu shows the app shortcuts, <code>app info</code>, and <code>remove from dial</code>.</dd></div>
         <div><dt>hold the clock</dt><dd>The setup opens: shape, theme, apps, and feel.</dd></div>
         <div><dt>tap <code>search</code></dt><dd>Search all your apps. The 5 apps that you last opened from search sit at the top. Tap the cross on a recent app to remove it, or tap <code>clear</code>. Tap <code>+ dial</code> to add an app to the dial.</dd></div>
-        <div><dt>tap the quick button</dt><dd>The quick app opens. The button sits in the bottom corner on the dial side and holds one app, such as the camera.</dd></div>
-        <div><dt>hold the quick button</dt><dd>Pick a different quick app, or tap <code>clear</code>.</dd></div>
+        <div><dt>tap the corner button</dt><dd>The button sits in the bottom corner on the dial side. By default it searches the web. In the setup you can give it one app instead, such as the camera.</dd></div>
+        <div><dt>hold the quick app button</dt><dd>Pick a different quick app, or tap <code>clear</code>.</dd></div>
         <div><dt>tap the mic button</dt><dd>Say an app name. The dial swells with your voice, and your words show at the top. When the words name one app, the dial turns to it and the app opens. If not, search opens with the words.</dd></div>
         <div><dt><kbd>j</kbd> <kbd>k</kbd> <kbd>Enter</kbd></dt><dd>With a hardware keyboard, <kbd>j</kbd> and <kbd>k</kbd> turn the dial. <kbd>Enter</kbd> opens the app.</dd></div>
       </dl>
-      <p class="note">The demo on this page does the first 4 gestures, a tap on the quick button, and the keys. Your scroll wheel also turns it.</p>
+      <p class="note">The demo on this page does the first 4 gestures, a tap on the corner button, and the keys. Your scroll wheel also turns it.</p>
     </section>
 
     <section class="wrap" id="video">
@@ -104,22 +104,24 @@
       <h2>5 layouts<span class="dot">.</span></h2>
       <p class="intro">Each layout puts a radial dial over the wallpaper. Tap a layout to load it in the demo.</p>
       <div class="layouts">
-        <button class="card" data-layout="0"><canvas></canvas><span class="txt"><span class="n">1</span><strong>soft · radial · double</strong><span>The default. Dots swell toward the notch, with a fainter inner arc.</span></span></button>
+        <button class="card" data-layout="0"><canvas></canvas><span class="txt"><span class="n">1</span><strong>soft · radial · double</strong><span>Dots swell toward the notch, with a fainter inner arc.</span></span></button>
         <button class="card" data-layout="1"><canvas></canvas><span class="txt"><span class="n">2</span><strong>round · radial · double</strong><span>The same dots on a tighter curve.</span></span></button>
         <button class="card" data-layout="2"><canvas></canvas><span class="txt"><span class="n">3</span><strong>soft · radial · ticks</strong><span>Hairline ticks on a thin rim.</span></span></button>
         <button class="card" data-layout="3"><canvas></canvas><span class="txt"><span class="n">4</span><strong>flat · radial · dots</strong><span>A dot matrix on a wide curve.</span></span></button>
-        <button class="card" data-layout="4"><canvas></canvas><span class="txt"><span class="n">5</span><strong>flat · radial · nodes</strong><span>Small nodes on a wide curve.</span></span></button>
+        <button class="card" data-layout="4"><canvas></canvas><span class="txt"><span class="n">5</span><strong>flat · radial · nodes</strong><span>The default. Small nodes on a wide curve.</span></span></button>
       </div>
       <p class="note">Each layout can sit on the right or the left edge.</p>
     </section>
 
     <section class="wrap" id="themes">
-      <h2>27 themes<span class="dot">.</span></h2>
-      <p class="intro">The 4 phone themes use a tinted dot-hand art. The 23 Omarchy themes each bring their own wallpaper. Tap a theme to apply it to the demo and to this page.</p>
+      <h2>28 themes<span class="dot">.</span></h2>
+      <p class="intro">The 4 phone themes use a tinted dot-hand art. The 23 Omarchy themes each bring their own wallpaper. The koi-watercolor theme is the default. Tap a theme to apply it to the demo and to this page.</p>
       <h3>phone</h3>
       <div class="swatches" data-group="phone"></div>
       <h3>omarchy</h3>
       <div class="swatches" data-group="omarchy"></div>
+      <h3>sepro</h3>
+      <div class="swatches" data-group="sepro"></div>
       <p class="note">You can also use your own photo as the wallpaper. The theme then sets only the colours.</p>
     </section>
 
