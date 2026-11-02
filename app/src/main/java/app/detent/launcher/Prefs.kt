@@ -89,6 +89,16 @@ class Prefs(ctx: Context) {
         get() = sp.getString("recentSearches", null)?.split('\n')?.filter { it.isNotEmpty() }.orEmpty()
         set(v) = sp.edit { putString("recentSearches", v.joinToString("\n")) }
 
+    /**
+     * The user's own app names by app key. One app per line, key and name split by a tab: keys and
+     * names are single lines and never hold a tab.
+     */
+    var names: Map<String, String>
+        get() = sp.getString("names", null)?.split('\n').orEmpty()
+            .mapNotNull { line -> line.split('\t', limit = 2).takeIf { it.size == 2 && it[1].isNotEmpty() } }
+            .associate { (key, name) -> key to name }
+        set(v) = sp.edit { putString("names", v.entries.joinToString("\n") { (key, name) -> "$key\t$name" }) }
+
     /** The theme and side that the system wallpaper shows now. */
     var appliedWall: String?
         get() = sp.getString("appliedWall", null)

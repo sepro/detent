@@ -32,9 +32,11 @@ adb install detent.apk
 | Tap any app on the dial | The app opens. Its name lifts off the dial, and the dial turns the app into the notch. |
 | Tap the dial while it turns | The dial stops. No app opens. |
 | Hold the dial | Letters replace the apps. Slide to a letter and release to jump to it. |
-| Hold the app in the notch | A menu shows the app shortcuts, `app info`, and `remove from dial`. |
+| Hold the app in the notch | A menu shows the app shortcuts, `app info`, `rename`, and `remove from dial`. |
 | Hold the clock or an empty area | The setup opens: shape, theme, apps, feel, and dock. |
 | Tap `apps` | Search all your apps. The 5 apps that you last opened from search sit at the top. Tap the cross on a recent app to remove it, or tap `clear`. Tap `+ dial` to add an app to the dial. |
+| Hold an app in `apps` | A menu shows `rename`, `app info`, and `add to dial` or `remove from dial`. Apps that share a name show their package below the name, so you can tell them apart. |
+| Tap `rename` | Type a new name and tap `save`. The app moves to its new name's place on the dial and in search. Search still finds it by its old name. Clear the field or tap `reset to …` to get the old name back. |
 | Tap the quick button | The quick app opens. If the button has no app, pick one. |
 | Hold the quick button | Pick a different quick app, or tap `clear`. |
 | Tap `search` in the corner | Type words and tap go. Google shows the results in your browser. Your 5 last web searches sit below the field. Tap one to search again. Tap the cross to remove it, or tap `clear`. |

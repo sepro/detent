@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -83,6 +84,11 @@ fun Modifier.place(u: Units, x: Float, y: Float) =
 @Composable
 fun Modifier.tap(enabled: Boolean = true, onClick: () -> Unit): Modifier =
     clickable(remember { MutableInteractionSource() }, null, enabled = enabled, onClick = onClick)
+
+/** [tap] that also answers a long press, as on the rows in search. */
+@Composable
+fun Modifier.tapOrHold(onHold: () -> Unit, onClick: () -> Unit): Modifier =
+    combinedClickable(remember { MutableInteractionSource() }, null, onLongClick = onHold, onClick = onClick)
 
 fun textStyle(u: Units, size: Float, color: Color, weight: FontWeight = FontWeight.Normal, spacing: Float = 0f, line: Float = 1.2f) =
     TextStyle(

@@ -98,6 +98,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
+import app.detent.launcher.AppEntry
 import app.detent.launcher.Corner
 import app.detent.launcher.Hear
 import app.detent.launcher.Ease
@@ -639,8 +640,12 @@ private fun QuickMenuView(s: LauncherState, pal: Palette) {
     val op by animateFloatAsState(if (s.menuShown) 1f else 0f, tween(180), label = "menuAlpha")
     val t by animateFloatAsState(if (s.menuShown) 1f else 0f, tween(220, easing = Ease), label = "menuMove")
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = veil }.background(pal.veil).tap { s.closeMenu() })
-    // Below the selected app. Near the bottom, the menu moves up so that it stays on the screen.
-    SideBox(s.left, min(s.anchorY + 30f, u.hd - u.bottom - 330f), 24f) {
+    // Below the selected app. Near the bottom, the menu moves up so that it stays on the screen,
+    // and while it holds the name field it also stays above the keyboard.
+    val ime = WindowInsets.ime.getBottom(LocalDensity.current) / u.k
+    val below = min(s.anchorY + 30f, u.hd - u.bottom - 330f)
+    val top = if (s.menuRenaming) min(below, u.hd - ime - 200f) else below
+    SideBox(s.left, top, 24f) {
         val shape = RoundedCornerShape(u.dp(16f))
         Column(
             Modifier.width(u.dp(220f))
@@ -655,20 +660,44 @@ private fun QuickMenuView(s: LauncherState, pal: Palette) {
                 .tap { }
                 .padding(u.dp(6f)),
         ) {
-            Txt(m.app.display, 11f, pal.muted, Modifier.padding(start = u.dp(12f), top = u.dp(10f), end = u.dp(12f), bottom = u.dp(8f)), spacing = .06f)
-            m.shortcuts.forEach { info ->
-                val label = (info.shortLabel ?: info.longLabel)?.toString()?.lowercase().orEmpty()
-                MenuItem(label, pal.fg) { s.menuShortcut(info) }
+            MenuTitle(m.app, s.nameHint(m.app), pal)
+            if (s.menuRenaming) {
+                MenuRename(s, pal, m.app)
+            } else {
+                m.shortcuts.forEach { info ->
+                    val label = (info.shortLabel ?: info.longLabel)?.toString()?.lowercase().orEmpty()
+                    MenuItem(label, pal.fg) { s.menuShortcut(info) }
+                }
+                if (m.shortcuts.isNotEmpty()) Box(Modifier.fillMaxWidth().height(u.dp(1f)).background(pal.rim))
+                MenuItem("app info", pal.muted2) { s.menuInfo() }
+                MenuItem("rename", pal.muted2) { s.menuRename() }
+                MenuItem("remove from dial", pal.muted2) { s.menuRemove() }
             }
-            if (m.shortcuts.isNotEmpty()) Box(Modifier.fillMaxWidth().height(u.dp(1f)).background(pal.rim))
-            MenuItem("app info", pal.muted2) { s.menuInfo() }
-            MenuItem("remove from dial", pal.muted2) { s.menuRemove() }
         }
     }
 }
 
+/** The dial menu after "rename": a name field in place of the actions. */
 @Composable
-private fun MenuItem(label: String, color: Color, onClick: () -> Unit) {
+private fun MenuRename(s: LauncherState, pal: Palette, app: AppEntry) {
+    val u = LocalUnits.current
+    var text by remember(app.key) { mutableStateOf(selectedName(app.label)) }
+    val save = { s.menuSaveName(text.text) }
+    Row(
+        Modifier.fillMaxWidth().height(u.dp(48f)).padding(start = u.dp(12f)),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(u.dp(6f)),
+    ) {
+        NameField(text, { text = it }, pal, 13f, onDone = save, modifier = Modifier.weight(1f))
+        SavePill(pal, save)
+    }
+    if (app.renamed) MenuItem("reset to ${app.systemLabel}", pal.muted2) { s.menuSaveName("") }
+    MenuItem("cancel", pal.muted2) { s.closeMenu() }
+}
+
+/** One action in a hold menu: on the dial and in search. */
+@Composable
+fun MenuItem(label: String, color: Color, onClick: () -> Unit) {
     val u = LocalUnits.current
     Box(
         Modifier.fillMaxWidth().height(u.dp(44f)).clip(RoundedCornerShape(u.dp(10f))).tap(onClick = onClick)

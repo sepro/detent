@@ -2,6 +2,7 @@ package app.detent.launcher
 
 import android.content.pm.ShortcutInfo
 import android.graphics.Rect
+import android.os.Process
 import android.os.SystemClock
 import android.speech.SpeechRecognizer
 import androidx.compose.runtime.derivedStateOf
@@ -64,6 +65,12 @@ interface HearEvents {
 
 class Press(val id: Long, val x: Float, val y: Float)
 class QuickMenu(val app: AppEntry, val shortcuts: List<ShortcutInfo>)
+
+/**
+ * The hold menu on a search row. [row] names the row, since an app can sit in both "recent" and "all apps".
+ * [y] is the bottom of the row in design units, where the menu hangs.
+ */
+class SearchMenu(val app: AppEntry, val row: String, val y: Float)
 class Toast(val id: Long, val text: String, val undo: (() -> Unit)?)
 
 /** The calls that need the activity. */
@@ -213,6 +220,18 @@ class LauncherState(
         private set
     var menuShown by mutableStateOf(false)
         private set
+
+    /** True while the dial's hold menu shows the name field in place of its actions. */
+    var menuRenaming by mutableStateOf(false)
+        private set
+    var searchMenu by mutableStateOf<SearchMenu?>(null)
+        private set
+    var searchMenuShown by mutableStateOf(false)
+        private set
+
+    /** The search row that shows the name field, or null. Rows use the list's item keys. */
+    var renameRow by mutableStateOf<String?>(null)
+        private set
     var scrub by mutableStateOf<List<String>?>(null)
         private set
     var toast by mutableStateOf<Toast?>(null)
@@ -251,6 +270,9 @@ class LauncherState(
     val left get() = cfg.side == Side.Left
     val dialApps by derivedStateOf { repo.apps.filter { it.key in dialKeys } }
 
+    /** Apps by name, for the names that more than one app shares. */
+    private val twinsByName by derivedStateOf { repo.apps.groupBy { it.label }.filterValues { it.size > 1 } }
+
     init {
         fb.sound = sound
         fb.haptics = haptics
@@ -264,6 +286,7 @@ class LauncherState(
         } else {
             startOb()
         }
+        repo.names = prefs.names
         repo.onLoaded = ::appsLoaded
         scope.launch { Unread.state.collect { unread = it } }
         scope.launch {
@@ -336,6 +359,7 @@ class LauncherState(
         }
         drag = null
         if (menu != null) closeMenu()
+        closeSearchMenu()
         // The microphone stays on only while Detent is in front.
         if (hear != null) closeVoice()
     }
@@ -352,6 +376,8 @@ class LauncherState(
             open != null -> close()
             hear != null -> closeVoice()
             menu != null -> closeMenu()
+            searchMenu != null -> closeSearchMenu()
+            renameRow != null -> cancelRename()
             search -> closeSearch()
             ob in Step.SHAPE..Step.DOCK -> obBack()
         }
@@ -925,12 +951,14 @@ class LauncherState(
     private fun openMenu() {
         val app = curApp() ?: return
         menu = QuickMenu(app, repo.shortcuts(app))
+        menuRenaming = false
         menuShown = true
     }
 
     fun closeMenu() {
         if (menu == null) return
         menuShown = false
+        menuRenaming = false
         scope.launch {
             delay(200)
             if (!menuShown) menu = null
@@ -961,6 +989,95 @@ class LauncherState(
 
     fun menuRemove() = afterMenu(160) { removeFromDial(it) }
 
+    /** Swaps the dial menu's actions for a name field. */
+    fun menuRename() {
+        if (menu == null) return
+        fb.tap()
+        menuRenaming = true
+    }
+
+    fun menuSaveName(typed: String) = afterMenu(0) { rename(it, typed) }
+
+    // Names: the user can give any app their own name, for example to tell two "authenticator" apps apart.
+
+    /**
+     * Gives [app] the name [typed]. A blank name, or Android's own name, removes the user's name.
+     * The app moves to its new place in search and on the dial, and the selected dial app stays in the notch.
+     */
+    fun rename(app: AppEntry, typed: String) {
+        renameRow = null
+        val name = cleanName(typed).takeIf { it.isNotEmpty() && it != app.systemLabel }
+        val before = prefs.names
+        if (before[app.key] == name) return
+        fb.click(false)
+        fb.tap()
+        saveNames(if (name == null) before - app.key else before + (app.key to name))
+        val text = if (name == null) "back to ${app.systemLabel}" else "renamed to $name"
+        showToast(text) { saveNames(before) }
+    }
+
+    private fun saveNames(next: Map<String, String>) {
+        val cur = curApp()
+        prefs.names = next
+        repo.names = next
+        // A new name can move the selected app along the dial, so the dial turns with it.
+        val ni = cur?.let { c -> dialApps.indexOfFirst { it.key == c.key } } ?: -1
+        if (ni >= 0) reindex(ni)
+    }
+
+    fun cancelRename() {
+        if (renameRow == null) return
+        fb.tap()
+        renameRow = null
+    }
+
+    /**
+     * A second line for a search row. Apps that share a name show what tells them apart: the package,
+     * or the activity when one package has two apps of that name, plus "work" for another profile.
+     * A renamed app shows the name Android gives it.
+     */
+    fun nameHint(app: AppEntry): String? {
+        val twins = twinsByName[app.label] ?: return if (app.renamed) app.systemLabel else null
+        val pkg = app.component.packageName
+        val onePackage = twins.count { it.component.packageName == pkg } > 1
+        val where = if (onePackage) app.component.className.substringAfterLast('.') else pkg
+        return if (app.user != Process.myUserHandle()) "$where · work" else where
+    }
+
+    // The hold menu on a search row.
+
+    fun holdInSearch(app: AppEntry, row: String, rowBottom: Float) {
+        if (pick || open != null) return
+        fb.click(true)
+        fb.heavy()
+        renameRow = null
+        searchMenu = SearchMenu(app, row, rowBottom)
+        searchMenuShown = true
+    }
+
+    fun closeSearchMenu() {
+        if (searchMenu == null) return
+        searchMenuShown = false
+        scope.launch {
+            delay(200)
+            if (!searchMenuShown) searchMenu = null
+        }
+    }
+
+    private fun afterSearchMenu(action: (SearchMenu) -> Unit) {
+        val m = searchMenu ?: return
+        closeSearchMenu()
+        action(m)
+    }
+
+    fun searchMenuRename() = afterSearchMenu { renameRow = it.row }
+
+    fun searchMenuResetName() = afterSearchMenu { rename(it.app, "") }
+
+    fun searchMenuInfo() = afterSearchMenu { host.showAppInfo(it.app, null) }
+
+    fun searchMenuDial() = afterSearchMenu { if (it.app.key in dialKeys) removeFromDial(it.app) else addToDial(it.app) }
+
     // Search.
 
     /** Opens search. [type] puts the cursor in the field, as when `/` opens search from a hardware keyboard. */
@@ -976,6 +1093,8 @@ class LauncherState(
 
     fun closeSearch() {
         fb.tap()
+        closeSearchMenu()
+        renameRow = null
         search = false
     }
 
@@ -983,7 +1102,10 @@ class LauncherState(
         val s = q.trim().lowercase()
         val all = repo.apps
         if (s.isEmpty()) return all
-        return all.filter { it.label.startsWith(s) } + all.filter { !it.label.startsWith(s) && s in it.label }
+        // A renamed app still answers to the name Android gives it.
+        val starts = { a: AppEntry -> a.label.startsWith(s) || a.systemLabel.startsWith(s) }
+        val contains = { a: AppEntry -> s in a.label || s in a.systemLabel }
+        return all.filter(starts) + all.filter { !starts(it) && contains(it) }
     }
 
     /**
@@ -1431,7 +1553,8 @@ class LauncherState(
             return key == Key.Escape
         }
         if (search) {
-            if (key == Key.Escape) closeSearch()
+            // Escape steps back like the back button: menu, then name field, then search.
+            if (key == Key.Escape) back()
             return key == Key.Escape
         }
         val o = ob
