@@ -54,6 +54,10 @@ With a hardware keyboard, `j` and `k` turn the dial. `l` or `Enter` opens the ap
   <img src="docs/media/themes.jpg" alt="Turn the dial to try a theme." width="49%">
   <img src="docs/media/search.jpg" alt="Search all apps and add one to the dial." width="49%">
 </p>
+<p>
+  <img src="docs/media/web.jpg" alt="Search the web. Your last searches sit below the field." width="49%">
+  <img src="docs/media/rename.jpg" alt="Hold an app and tap rename to give it your own name." width="49%">
+</p>
 
 ## Shapes and themes
 
@@ -132,6 +136,17 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 Without the signing variables, the build uses your local debug key.
+
+### Images
+
+The images in `docs/media` are screenshots from an emulator in a frame. To make them again, start a 1080x2400 emulator, install the debug build, and run the script. It needs Node.js 22 or later and Chrome.
+
+```sh
+./gradlew installDebug
+node tools/media/make.mjs
+```
+
+Each scene is in `tools/media/make.mjs`, and the frame is `tools/media/frame.html`. To make some of the images, name their scenes, such as `node tools/media/make.mjs search rename`. To change only the frame, add `--frame-only`, and the script uses the last screenshots without the emulator.
 
 ## Release
 

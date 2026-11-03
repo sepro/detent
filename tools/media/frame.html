@@ -1,0 +1,130 @@
+<!doctype html>
+<!--
+  One frame of the README and site images: a headline on the left and the phone on the right,
+  over the theme wallpaper. make.mjs opens this page with the scene in the hash and saves a screenshot.
+  #shot=<screenshot url>&wall=<wallpaper url>&title=<headline>&sub=<line below>&accent=<hex>&time=<hh:mm>
+  Without a title, the phone sits alone in the middle.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "JetBrains Mono"; font-weight: 300; src: url("../../app/src/main/res/font/jetbrains_mono_light.ttf"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 400; src: url("../../app/src/main/res/font/jetbrains_mono_regular.ttf"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 500; src: url("../../app/src/main/res/font/jetbrains_mono_medium.ttf"); }
+
+  :root { --accent: #5fa3ac; }
+  html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #0d1214; }
+  body { position: relative; font-family: "JetBrains Mono", monospace; }
+
+  /* The wallpaper, blurred well past recognition and darkened most where the words sit. */
+  .wall {
+    position: absolute; inset: -80px;
+    background: center / cover no-repeat;
+    filter: blur(44px) saturate(.95) brightness(.5);
+  }
+  .shade {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(8, 11, 13, .62) 0%, rgba(8, 11, 13, .38) 45%, rgba(8, 11, 13, .05) 100%);
+  }
+  .solo .shade { background: rgba(8, 11, 13, .25); }
+
+  .words { position: absolute; left: 100px; top: 290px; }
+  .title { margin: 0; font-weight: 300; font-size: 44px; line-height: 48px; letter-spacing: -.01em; color: #e3e8e6; white-space: pre; }
+  .title .dot { color: var(--accent); }
+  .sub { margin: 14px 0 0; font-weight: 400; font-size: 17px; line-height: 22px; color: #9aa3a0; white-space: pre; }
+
+  .phone {
+    position: absolute; left: 842px; top: 37px; width: 297px; height: 647px;
+    box-sizing: border-box; padding: 7px;
+    border-radius: 46px; background: #0e1011;
+    border: 1.5px solid #34393b;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .4);
+  }
+  .solo .phone { left: 491.5px; }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 39px; overflow: hidden; background: #000; }
+  .screen canvas { display: block; width: 100%; height: 100%; }
+
+  /* The system status bar is hidden on the device, so every frame gets the same quiet one. */
+  .status {
+    position: absolute; left: 0; right: 0; top: 0; height: 30px;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+    font-size: 9px; font-weight: 500; color: #eef1f0; letter-spacing: .02em;
+  }
+  .icons { display: flex; align-items: center; gap: 8px; }
+  .bars { display: flex; align-items: flex-end; gap: 1.5px; height: 8px; }
+  .bars i { display: block; width: 2.5px; background: #eef1f0; border-radius: .5px; }
+  .battery { position: relative; width: 15px; height: 7px; box-sizing: border-box; border: 1.2px solid #eef1f0; border-radius: 2.5px; }
+  .battery::before { content: ""; position: absolute; left: 1px; top: 1px; bottom: 1px; width: 9px; background: #eef1f0; border-radius: 1px; }
+  .battery::after { content: ""; position: absolute; right: -3px; top: 1.5px; width: 1.5px; height: 2.5px; background: #eef1f0; border-radius: 0 1px 1px 0; }
+</style>
+</head>
+<body>
+  <div class="wall"></div>
+  <div class="shade"></div>
+  <div class="words">
+    <p class="title"></p>
+    <p class="sub"></p>
+  </div>
+  <div class="phone">
+    <div class="screen">
+      <canvas></canvas>
+      <div class="status">
+        <span class="time"></span>
+        <span class="icons">
+          <span class="bars"><i style="height:3px"></i><i style="height:4.5px"></i><i style="height:6px"></i><i style="height:8px"></i></span>
+          <span class="battery"></span>
+        </span>
+      </div>
+    </div>
+  </div>
+<script>
+  const p = new URLSearchParams(location.hash.slice(1));
+  const title = p.get("title") || "";
+  document.documentElement.style.setProperty("--accent", p.get("accent") || "#5fa3ac");
+  document.querySelector(".wall").style.backgroundImage = `url("${p.get("wall")}")`;
+  document.querySelector(".time").textContent = p.get("time") || "23:30";
+  if (title) {
+    // The headline ends on a dot in the accent colour.
+    const t = document.querySelector(".title");
+    t.textContent = title;
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.textContent = ".";
+    t.append(dot);
+    document.querySelector(".sub").textContent = p.get("sub") || "";
+  } else {
+    document.body.classList.add("solo");
+    document.querySelector(".words").remove();
+  }
+  // The screenshot shrinks to about a quarter. Halving it a step at a time keeps small text smooth.
+  const img = new Image();
+  img.src = p.get("shot");
+  const shrink = () => {
+    const canvas = document.querySelector(".screen canvas");
+    const w = Math.round(canvas.clientWidth * devicePixelRatio), h = Math.round(canvas.clientHeight * devicePixelRatio);
+    let src = img;
+    while (src.width / 2 > w) {
+      const half = document.createElement("canvas");
+      half.width = Math.round(src.width / 2);
+      half.height = Math.round(src.height / 2);
+      const c = half.getContext("2d");
+      c.imageSmoothingQuality = "high";
+      c.drawImage(src, 0, 0, half.width, half.height);
+      src = half;
+    }
+    canvas.width = w;
+    canvas.height = h;
+    const c = canvas.getContext("2d");
+    c.imageSmoothingQuality = "high";
+    c.drawImage(src, 0, 0, w, h);
+  };
+  // make.mjs waits for this before it takes the picture.
+  window.ready = Promise.all([document.fonts.ready, img.decode().then(shrink), new Promise(r => {
+    const w = new Image();
+    w.onload = w.onerror = r;
+    w.src = p.get("wall");
+  })]).then(() => document.fonts.ready);
+</script>
+</body>
+</html>
