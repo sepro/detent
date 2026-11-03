@@ -71,6 +71,7 @@ const SCENES = {
     home: { title: "detent", sub: "a home screen you turn.", select: "gmail", steps: [] },
     plain: { select: "gmail", steps: [] },
     "plain-4x3": { like: "plain", size: [960, 720] },
+    "plain-1075": { like: "plain", size: [1075, 720] },
     letter: { title: "hold the dial", sub: "jump by letter.", select: "maps", steps: [["hold", P.dial, 1400]] },
     menu: { title: "hold an app", sub: "shortcuts, info and a new name.", select: "settings", steps: [["press", P.selected, 900], ["wait", 900]] },
     themes: {
