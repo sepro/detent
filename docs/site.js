@@ -1,21 +1,25 @@
 // Connects the page to the dials: the demo, the layout previews, and the theme swatches.
 import { Dial, LAYOUTS, THEMES, DEFAULT_LAYOUT, DEFAULT_THEME, palette, css } from './dial.js';
 
+// The keys carry a version because earlier pages saved the theme and layout on every visit, so
+// those saves hold the old defaults and not a choice. A new key lets every visitor start on the
+// current defaults. Bump it again when the defaults change.
+const KEY = 'detent.v2.';
 const store = {
-  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch { /* The page works without storage. */ } },
+  get(k) { try { return localStorage.getItem(KEY + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(KEY + k, v); } catch { /* The page works without storage. */ } },
 };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
-let theme = THEMES.findIndex(t => t.name === store.get('detent.theme'));
+let theme = THEMES.findIndex(t => t.name === store.get('theme'));
 if (theme < 0) theme = DEFAULT_THEME;
 // Number(null) is 0, so a missing layout must be caught before the range check.
-const savedLayout = store.get('detent.layout');
+const savedLayout = store.get('layout');
 let layout = savedLayout === null ? NaN : Number(savedLayout);
 if (!(layout >= 0 && layout < LAYOUTS.length)) layout = DEFAULT_LAYOUT;
-let left = store.get('detent.side') === 'left';
+let left = store.get('side') === 'left';
 
 const said = $('#said');
 const hint = $('.hint');
@@ -55,7 +59,9 @@ for (const group of ['phone', 'omarchy', 'sepro']) {
   });
 }
 
-function applyTheme(i) {
+// Only a click is a choice to keep. The first paint passes remember = false, so a visitor
+// who never picks follows the defaults, even after they change.
+function applyTheme(i, remember = true) {
   theme = i;
   const t = THEMES[i], p = palette(t), root = document.documentElement;
   const vars = {
@@ -70,28 +76,28 @@ function applyTheme(i) {
   dials.forEach(d => d.setTheme(i));
   $('#theme-name').textContent = t.name;
   $$('.swatch').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.theme) === i)));
-  store.set('detent.theme', t.name);
+  if (remember) store.set('theme', t.name);
 }
 
-function applyLayout(i) {
+function applyLayout(i, remember = true) {
   layout = i;
   demo.setLayout(i);
   $('#layout-name').textContent = LAYOUTS[i].name;
   $$('[data-chip]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.chip) === i)));
   $$('.card').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.layout) === i)));
-  store.set('detent.layout', String(i));
+  if (remember) store.set('layout', String(i));
 }
 
-function applySide(l) {
+function applySide(l, remember = true) {
   left = l;
   dials.forEach(d => d.setSide(l));
   $$('[data-side]').forEach(b => b.setAttribute('aria-pressed', String((b.dataset.side === 'left') === l)));
-  store.set('detent.side', l ? 'left' : 'right');
+  if (remember) store.set('side', l ? 'left' : 'right');
 }
 
-applyTheme(theme);
-applyLayout(layout);
-applySide(left);
+applyTheme(theme, false);
+applyLayout(layout, false);
+applySide(left, false);
 
 $$('[data-chip]').forEach(b => b.addEventListener('click', () => applyLayout(Number(b.dataset.chip))));
 $$('.card').forEach(b => b.addEventListener('click', () => {
