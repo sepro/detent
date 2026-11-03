@@ -65,10 +65,12 @@ const P = {
 };
 
 // Each scene: the words in the frame, the app's settings, and the steps to the screen.
-// A "hold" step keeps the finger down while the screenshot is taken.
+// A "hold" step keeps the finger down while the screenshot is taken. A scene "like" another frames its screenshot,
+// and "size" sets the frame in pixels (1280x720 by default).
 const SCENES = {
     home: { title: "detent", sub: "a home screen you turn.", select: "gmail", steps: [] },
     plain: { select: "gmail", steps: [] },
+    "plain-4x3": { like: "plain", size: [960, 720] },
     letter: { title: "hold the dial", sub: "jump by letter.", select: "maps", steps: [["hold", P.dial, 1400]] },
     menu: { title: "hold an app", sub: "shortcuts, info and a new name.", select: "settings", steps: [["press", P.selected, 900], ["wait", 900]] },
     themes: {
@@ -270,16 +272,17 @@ async function frame(list) {
         const port = await devtoolsPort(profile);
         const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" })).json();
         const page = await connect(target.webSocketDebuggerUrl);
-        await page("Emulation.setDeviceMetricsOverride", { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false });
         const wall = pathToFileURL(join(root, "app/src/main/assets/walls/koi-watercolor.webp")).href;
         for (const name of list) {
             const s = SCENES[name];
-            const shot = join(shots, `${name}.png`);
+            const [width, height] = s.size || [1280, 720];
+            await page("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+            const shot = join(shots, `${s.like || name}.png`);
             if (!existsSync(shot)) throw new Error(`no screenshot for ${name}. Capture it first`);
-            const hash = new URLSearchParams({ shot: pathToFileURL(shot).href, wall, title: s.title || "", sub: s.sub || "" });
+            const hash = new URLSearchParams({ shot: pathToFileURL(shot).href, wall, title: s.title || "", sub: s.sub || "", w: width, h: height });
             await page("Page.navigate", { url: `${pathToFileURL(join(here, "frame.html")).href}?${name}#${hash}` });
             await page("Runtime.evaluate", { expression: "new Promise(r => { const go = () => window.ready ? window.ready.then(r) : setTimeout(go, 20); go(); })", awaitPromise: true });
-            const { data } = await page("Page.captureScreenshot", { format: "jpeg", quality: 86, clip: { x: 0, y: 0, width: 1280, height: 720, scale: 1 } });
+            const { data } = await page("Page.captureScreenshot", { format: "jpeg", quality: 86, clip: { x: 0, y: 0, width, height, scale: 1 } });
             writeFileSync(join(out, `${name}.jpg`), Buffer.from(data, "base64"));
             console.log(`frame ${name} -> docs/media/${name}.jpg`);
         }
@@ -323,5 +326,5 @@ async function connect(url) {
 // Run, once everything above is defined.
 
 mkdirSync(shots, { recursive: true });
-if (!frameOnly) capture(scenes);
+if (!frameOnly) capture([...new Set(scenes.map(n => SCENES[n].like || n))]);
 await frame(scenes);

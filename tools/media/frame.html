@@ -2,7 +2,7 @@
 <!--
   One frame of the README and site images: a headline on the left and the phone on the right,
   over the theme wallpaper. make.mjs opens this page with the scene in the hash and saves a screenshot.
-  #shot=<screenshot url>&wall=<wallpaper url>&title=<headline>&sub=<line below>&accent=<hex>&time=<hh:mm>
+  #shot=<screenshot url>&wall=<wallpaper url>&title=<headline>&sub=<line below>&accent=<hex>&time=<hh:mm>&w=<width>&h=<height>
   Without a title, the phone sits alone in the middle.
 -->
 <html>
@@ -41,7 +41,7 @@
     border: 1.5px solid #34393b;
     box-shadow: 0 24px 70px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .4);
   }
-  .solo .phone { left: 491.5px; }
+  .solo .phone { left: calc(50% - 148.5px); }
   .screen { position: relative; width: 100%; height: 100%; border-radius: 39px; overflow: hidden; background: #000; }
   .screen canvas { display: block; width: 100%; height: 100%; }
 
@@ -82,6 +82,10 @@
   const p = new URLSearchParams(location.hash.slice(1));
   const title = p.get("title") || "";
   document.documentElement.style.setProperty("--accent", p.get("accent") || "#5fa3ac");
+  for (const el of [document.documentElement, document.body]) {
+    el.style.width = (p.get("w") || 1280) + "px";
+    el.style.height = (p.get("h") || 720) + "px";
+  }
   document.querySelector(".wall").style.backgroundImage = `url("${p.get("wall")}")`;
   document.querySelector(".time").textContent = p.get("time") || "23:30";
   if (title) {
