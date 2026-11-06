@@ -28,6 +28,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import app.detent.launcher.ui.DetentRoot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -73,6 +74,8 @@ class MainActivity : ComponentActivity(), Host {
         micDone = null
     }
     private var recognizer: SpeechRecognizer? = null
+    // The equalizer works without notifications, so the answer changes nothing here.
+    private val notificationRequest = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val bars = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
@@ -276,6 +279,25 @@ class MainActivity : ComponentActivity(), Host {
     override fun cleanWallpapers(keep: String?) {
         val app = applicationContext
         thread(name = "detent-clean") { CustomWallpaper.clean(app, keep) }
+    }
+
+    override fun applySound(preset: SoundPreset) {
+        val intent = Intent(this, SoundService::class.java)
+        if (preset == SoundPreset.Off) {
+            stopService(intent)
+            return
+        }
+        try {
+            ContextCompat.startForegroundService(this, intent)
+        } catch (e: IllegalStateException) {
+            // Android refuses to start a service from the background. The home screen tries again on resume.
+        }
+    }
+
+    override fun askNotifications() {
+        if (Build.VERSION.SDK_INT < 33) return
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        notificationRequest.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     private fun open(intent: Intent): Boolean = try {

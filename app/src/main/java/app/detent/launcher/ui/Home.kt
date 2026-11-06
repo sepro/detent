@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.systemGestureExclusion
@@ -49,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -84,6 +86,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -100,6 +103,7 @@ import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 import app.detent.launcher.AppEntry
 import app.detent.launcher.Corner
+import app.detent.launcher.DockButton
 import app.detent.launcher.Hear
 import app.detent.launcher.Ease
 import app.detent.launcher.LauncherState
@@ -184,12 +188,15 @@ private fun Home(s: LauncherState) {
         DialCanvas(s, pal, wave)
         ScrubLetter(s, pal)
         PressRing(s, pal)
-        AppsButton(s, pal)
+        // Without a middle button, the apps button takes the width of the corner button, so the two match.
+        var cornerWidth by remember { mutableFloatStateOf(0f) }
+        AppsButton(s, pal, cornerWidth.takeIf { s.dockButton == DockButton.None && s.corner != Corner.None })
         when (s.corner) {
-            Corner.Quick -> QuickButton(s, pal)
-            Corner.Web -> WebButton(s, pal)
+            Corner.Quick -> QuickButton(s, pal) { cornerWidth = it }
+            Corner.Web -> WebButton(s, pal) { cornerWidth = it }
             Corner.None -> {}
         }
+        SoundDialView(s, pal)
         HearLayer(s, pal)
         if (s.ob != null) Onboarding(s, pal, THEMES[live])
         QuickMenuView(s, pal)
@@ -345,7 +352,7 @@ private fun Clock(s: LauncherState, pal: Palette) {
     val alpha by animateFloatAsState(
         when {
             s.ob != null -> 0f
-            s.scrub != null -> .25f
+            s.scrub != null || s.soundOpen -> .25f
             else -> 1f
         },
         tween(400), label = "clockAlpha",
@@ -408,24 +415,32 @@ private fun Heard(s: LauncherState, pal: Palette, modifier: Modifier) {
     }
 }
 
+/**
+ * The apps button, with the middle button between it and the corner button. [matchWidth] is the width of the
+ * corner button in design units when the apps button should match it.
+ */
 @Composable
-private fun AppsButton(s: LauncherState, pal: Palette) {
+private fun AppsButton(s: LauncherState, pal: Palette, matchWidth: Float?) {
     val u = LocalUnits.current
     val homeIdle = s.ob == null && !s.search && s.hear == null && s.open == null
     val shown = homeIdle && s.scrub == null
     val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "searchAlpha")
     val dy by animateFloatAsState(if (shown) 0f else 8f, tween(300), label = "searchY")
+    // The sound dial turns around the equalizer button, so the button stays while the apps button steps back.
+    val appsAlpha by animateFloatAsState(if (s.soundOpen) 0f else 1f, tween(200), label = "appsAlpha")
     SideBox(s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dy * u.k }) {
-        // The voice button sits between apps and the quick button.
+        // The middle button sits between apps and the corner button.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(u.dp(10f))) {
-            if (s.left && s.mic) VoiceButton(s, pal, homeIdle)
+            if (s.left) MiddleButton(s, pal, homeIdle)
             val shape = RoundedCornerShape(50)
             Row(
-                Modifier.height(u.dp(44f)).clip(shape).background(pal.btnBg).border(u.dp(1f), pal.rim2, shape)
+                Modifier.graphicsLayer { this.alpha = appsAlpha }
+                    .then(if (matchWidth != null) Modifier.widthIn(min = u.dp(matchWidth)) else Modifier)
+                    .height(u.dp(44f)).clip(shape).background(pal.btnBg).border(u.dp(1f), pal.rim2, shape)
                     .tap(enabled = homeIdle) { s.openSearch() }
                     .padding(start = u.dp(14f), end = u.dp(18f)),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(u.dp(10f)),
+                horizontalArrangement = Arrangement.spacedBy(u.dp(10f), Alignment.CenterHorizontally),
             ) {
                 // A 3 x 3 grid of squares.
                 Canvas(Modifier.size(u.dp(14f))) {
@@ -436,8 +451,34 @@ private fun AppsButton(s: LauncherState, pal: Palette) {
                 }
                 Txt("apps", 13f, pal.btnFg)
             }
-            if (!s.left && s.mic) VoiceButton(s, pal, homeIdle)
+            if (!s.left) MiddleButton(s, pal, homeIdle)
         }
+    }
+}
+
+@Composable
+private fun MiddleButton(s: LauncherState, pal: Palette, idle: Boolean) = when (s.dockButton) {
+    DockButton.Mic -> VoiceButton(s, pal, idle)
+    DockButton.Equalizer -> SoundButton(s, pal, idle)
+    DockButton.None -> {}
+}
+
+/** The equalizer button. A tap opens the sound dial around it. */
+@Composable
+private fun SoundButton(s: LauncherState, pal: Palette, idle: Boolean) {
+    val u = LocalUnits.current
+    Box(
+        Modifier.size(u.dp(44f)).clip(CircleShape).background(pal.btnBg).border(u.dp(1f), pal.rim2, CircleShape)
+            .onGloballyPositioned {
+                val p = it.positionInRoot()
+                s.soundHubX = (p.x + it.size.width / 2f) / u.k
+                s.soundHubY = (p.y + it.size.height / 2f) / u.k
+            }
+            .semantics { contentDescription = "equalizer" }
+            .tap(enabled = idle) { s.soundTap() },
+        contentAlignment = Alignment.Center,
+    ) {
+        HeadphonesIcon(soundIconColor(s, pal))
     }
 }
 
@@ -469,11 +510,11 @@ private fun VoiceButton(s: LauncherState, pal: Palette, idle: Boolean) {
 
 /** The quick button sits in the bottom corner on the dial side. A tap opens its app. Hold it to pick another app. */
 @Composable
-private fun QuickButton(s: LauncherState, pal: Palette) {
+private fun QuickButton(s: LauncherState, pal: Palette, onWidth: (Float) -> Unit) {
     val u = LocalUnits.current
     val homeIdle = s.ob == null && !s.search && s.hear == null && s.open == null
     val idle by rememberUpdatedState(homeIdle)
-    val shown = homeIdle && s.scrub == null
+    val shown = homeIdle && s.scrub == null && !s.soundOpen
     val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "quickAlpha")
     val dy by animateFloatAsState(if (shown) 0f else 8f, tween(300), label = "quickY")
     val app = s.quickApp
@@ -482,7 +523,8 @@ private fun QuickButton(s: LauncherState, pal: Palette) {
     SideBox(!s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dy * u.k }) {
         val shape = RoundedCornerShape(50)
         Row(
-            Modifier.height(u.dp(44f)).clip(shape).background(pal.btnBg).border(u.dp(1f), pal.rim2, shape)
+            Modifier.onSizeChanged { onWidth(it.width / u.k) }
+                .height(u.dp(44f)).clip(shape).background(pal.btnBg).border(u.dp(1f), pal.rim2, shape)
                 .pointerInput(s) {
                     detectTapGestures(
                         onTap = { if (idle) s.quickTap(label.x, label.y) },
@@ -517,16 +559,17 @@ private fun QuickButton(s: LauncherState, pal: Palette) {
 
 /** The web search button takes the place of the quick button. A tap opens search for the web. */
 @Composable
-private fun WebButton(s: LauncherState, pal: Palette) {
+private fun WebButton(s: LauncherState, pal: Palette, onWidth: (Float) -> Unit) {
     val u = LocalUnits.current
     val homeIdle = s.ob == null && !s.search && s.hear == null && s.open == null
-    val shown = homeIdle && s.scrub == null
+    val shown = homeIdle && s.scrub == null && !s.soundOpen
     val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "webAlpha")
     val dy by animateFloatAsState(if (shown) 0f else 8f, tween(300), label = "webY")
     SideBox(!s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dy * u.k }) {
         val shape = RoundedCornerShape(50)
         Row(
-            Modifier.height(u.dp(44f)).clip(shape).background(pal.btnBg).border(u.dp(1f), pal.rim2, shape)
+            Modifier.onSizeChanged { onWidth(it.width / u.k) }
+                .height(u.dp(44f)).clip(shape).background(pal.btnBg).border(u.dp(1f), pal.rim2, shape)
                 .tap(enabled = homeIdle) { s.openWeb() }
                 .padding(start = u.dp(14f), end = u.dp(18f)),
             verticalAlignment = Alignment.CenterVertically,

@@ -87,6 +87,7 @@
         <div><dt>tap the corner button</dt><dd>The button sits in the bottom corner on the dial side. By default it searches the web. In the setup you can give it one app instead, such as the camera.</dd></div>
         <div><dt>hold the quick app button</dt><dd>Pick a different quick app, or tap <code>clear</code>.</dd></div>
         <div><dt>tap the mic button</dt><dd>Say an app name. The dial swells with your voice, and your words show at the top. When the words name one app, the dial turns to it and the app opens. If not, search opens with the words.</dd></div>
+        <div><dt>tap the headphones button</dt><dd>In the setup you can swap the mic button for the equalizer. A small dial of sound presets opens around the button: off, voice, clear, music, bass boost, loud, and night. The preset in the notch plays as soon as the dial stops. Some phones allow the equalizer only in music apps that announce their sound.</dd></div>
         <div><dt><kbd>j</kbd> <kbd>k</kbd> <kbd>Enter</kbd></dt><dd>With a hardware keyboard, <kbd>j</kbd> and <kbd>k</kbd> turn the dial. <kbd>Enter</kbd> opens the app.</dd></div>
       </dl>
       <p class="note">The demo on this page does the first 4 gestures, a tap on the corner button, and the keys. Your scroll wheel also turns it.</p>
@@ -135,6 +136,9 @@
           <tr><td><code>VIBRATE</code></td><td>For haptics.</td></tr>
           <tr><td><code>SET_WALLPAPER</code></td><td>For the <code>lock screen</code> switch.</td></tr>
           <tr><td><code>RECORD_AUDIO</code></td><td>Optional. For the mic button. The microphone is on only while Detent listens. The speech service of your phone turns your voice into text.</td></tr>
+          <tr><td><code>MODIFY_AUDIO_SETTINGS</code></td><td>For the equalizer. It lets Detent put an audio effect on the sound output.</td></tr>
+          <tr><td><code>FOREGROUND_SERVICE</code></td><td>For the equalizer. It keeps Detent running while a preset is on, with a notification.</td></tr>
+          <tr><td><code>POST_NOTIFICATIONS</code></td><td>Optional. For the equalizer notification and its <code>off</code> button.</td></tr>
           <tr><td>notification access</td><td>Optional. For unread dots. Detent reads only which apps have notifications. It does not keep the notification text.</td></tr>
         </tbody>
       </table>

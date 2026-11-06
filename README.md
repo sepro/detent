@@ -41,8 +41,9 @@ adb install detent.apk
 | Hold the quick button | Pick a different quick app, or tap `clear`. |
 | Tap `search` in the corner | Type words and tap go. Google shows the results in your browser. Your 5 last web searches sit below the field. Tap one to search again. Tap the cross to remove it, or tap `clear`. |
 | Tap the mic button and say an app name | The dial swells with your voice, and your words show at the top. When the words name one app, the dial turns to it and the app opens. If not, search opens with the words. |
+| Tap the headphones button | A small dial of sound presets opens around the button. Turn it like the app dial. The preset in the notch plays as soon as the dial stops. Tap a preset to turn to it. Tap the button, the preset in the notch, or anywhere else to close the dial. |
 
-The corner button sits in the bottom corner on the dial side. By default it is a web `search` button. On the `dock` step, you can give it one app that you need fast, such as the camera, or leave the corner empty. The mic button sits between `apps` and the corner button, and is on by default. You can hide it on the same step.
+The corner button sits in the bottom corner on the dial side. By default it is a web `search` button. On the `dock` step, you can give it one app that you need fast, such as the camera, or leave the corner empty. The middle button sits between `apps` and the corner button. By default it is the mic button. On the same step, you can make it the headphones button for the equalizer, or hide it. Without a middle button, `apps` takes the width of the corner button.
 
 With a hardware keyboard, `j` and `k` turn the dial. `l` or `Enter` opens the app. `/` opens search. `Esc` goes back.
 
@@ -103,12 +104,39 @@ The `dock` step sets the buttons at the bottom of the home screen:
 
 | Choice | What it does |
 | --- | --- |
-| `mic` | Shows the mic button. |
+| `mic` | The middle button opens an app by voice. This is the default. |
+| `equalizer` | The middle button opens the sound dial. |
+| `none` | No middle button. |
 | `quick app` | The corner button opens one app. |
 | `web search` | The corner button searches the web. This is the default. |
 | `none` | The corner stays empty. |
 
+The first 3 choices set the middle button, and the last 3 set the corner button.
+
 If Android shows "Restricted setting" when you allow notification access, open the app info for Detent. Tap ⋮, then `Allow restricted settings`. Then try again.
+
+## Equalizer
+
+The sound dial has 7 presets:
+
+| Preset | Sound |
+| --- | --- |
+| `off` | The sound as the app plays it. This is the default. |
+| `voice` | Less bass and more mid range, for clearer words in podcasts and calls. |
+| `clear` | More detail in the highs. |
+| `music` | A little more bass and treble. |
+| `bass boost` | More low end. |
+| `loud` | Louder, with a limiter that holds the peaks in. |
+| `night` | Softer bass, and the loud parts come closer to the quiet parts. |
+
+While a preset is on, the headphones turn the accent colour, and a notification shows the preset with an `off` button. The first time that you close the sound dial on a preset, Android asks if Detent may show notifications. Without that permission, the equalizer still works, but the notification and its `off` button do not show. Hiding the headphones button does not turn the preset off.
+
+Android has no way for an app to change the equalizer of the phone itself, such as Samsung Sound Quality or Dolby Atmos. Detent runs its own equalizer on top of it. This has some limits:
+
+- Detent puts its equalizer on the sound output of the phone, so all sound goes through it. This way is old, and some phones do not allow it. On those phones, the equalizer works only in music apps that announce their sound to equalizer apps, such as many local music players. Many streaming apps, YouTube among them, do not announce their sound, so the preset does not reach them. The sound dial says so when this happens.
+- Some phones play music through a direct path to the hardware that skips the equalizer, even when the phone allows it.
+- The equalizer adds to the sound settings of the phone and to other equalizer apps. If another equalizer app takes control, Detent's preset has no effect until that app lets go.
+- The effect lives only while Detent runs. The notification keeps Detent running, but if Android stops it anyway, the preset comes back the next time the home screen shows.
 
 ## Permissions
 
@@ -122,6 +150,9 @@ The mic button uses the speech service of your phone, such as Speech Services by
 | `VIBRATE` | For haptics. |
 | `SET_WALLPAPER` | For the `lock screen` switch. |
 | `RECORD_AUDIO` | Optional. For the mic button. The microphone is on only while Detent listens. If you do not allow it, the mic button opens the speech dialog of your phone. |
+| `MODIFY_AUDIO_SETTINGS` | For the equalizer. It lets Detent put an audio effect on the sound output. |
+| `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_SPECIAL_USE` | For the equalizer. They keep Detent running while a preset is on, so the preset stays on in other apps. |
+| `POST_NOTIFICATIONS` | Optional. For the equalizer notification and its `off` button. |
 | Notification access | Optional. For unread dots. Detent reads only which apps have notifications and when they arrived. It does not keep the notification text. |
 
 ## Build from source

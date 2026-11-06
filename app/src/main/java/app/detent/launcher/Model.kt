@@ -196,11 +196,14 @@ fun labelScale(a: Float, chars: Int): Float {
     return min(1 + .45f * cl * cl, fitScale(chars))
 }
 
-fun labelRadius(g: Geo, m: Markers) = g.r - when (m) {
+/** The gap between the rim and the names in the style of [m]. The ticks and the inner arc need more room. */
+fun labelInset(m: Markers) = when (m) {
     Markers.Ticks -> 28f
     Markers.Double -> 34f
     else -> 22f
 }
+
+fun labelRadius(g: Geo, m: Markers) = g.r - labelInset(m)
 
 /**
  * Position of a label [d] rows away from the selected row. [tx] is the horizontal shift in label widths.

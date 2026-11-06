@@ -9,7 +9,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -20,6 +19,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import app.detent.launcher.AX
 import app.detent.launcher.Geo
 import app.detent.launcher.LauncherState
 import app.detent.launcher.Layout
@@ -55,8 +55,14 @@ fun DialCanvas(s: LauncherState, pal: Palette, wave: VoiceWave) {
     val hide = if (o != null && o.fromDial && dots != null) apps.indexOfFirst { it.key == o.key } else -1
     val layout = s.layout
     val left = s.left
+    // The app dial steps back behind the sound dial, so the two never compete.
     val alpha by animateFloatAsState(
-        if (s.ob == Step.WELCOME || s.ob == Step.APPS) 0f else 1f, tween(500), label = "dialAlpha",
+        when {
+            s.ob == Step.WELCOME || s.ob == Step.APPS -> 0f
+            s.soundOpen -> .2f
+            else -> 1f
+        },
+        tween(if (s.soundOpen) 250 else 500), label = "dialAlpha",
     )
 
     Canvas(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha }) {
@@ -83,51 +89,70 @@ private fun DrawScope.drawMarks(pos: Float, g: Geo, k: Float, pal: Palette, layo
         val ang = d * g.step
         val px = g.cx - g.r * cos(ang)
         val py = g.cy + g.r * sin(ang)
-        val major = mod(i, tpa) == 0
-        val hot = major && a < .5f
         val fade = (1 - a / g.span).pow(.8f)
-        // While Detent listens, the voice swells the marks. A strong swell takes the accent colour.
-        val v = wave.swell(d)
-        val hue = (v * 1.4f).coerceIn(0f, 1f)
-        when (m) {
-            Markers.Ticks -> {
-                val w = (if (major) 14f else 6f) + v * 18f
-                val sg = if (left) -1f else 1f
-                drawLine(
-                    lerp(if (major) pal.tickMaj else pal.tickMin, pal.accent, hue),
-                    Offset(x(px), py * k),
-                    Offset(x(px) + sg * w * cos(ang) * k, (py - w * sin(ang)) * k),
-                    strokeWidth = k * (1 + v),
-                    alpha = max(fade, hue),
-                )
-            }
-            Markers.Double -> {
-                // Outer dots swell toward the notch. A fainter inner arc marks each app.
-                val f = max(0f, 1 - a / 3.6f)
-                val size = (if (hot) 9f else if (major) 3 + 5 * f else 2 + 2.6f * f) + v * (if (major) 8f else 4f)
+        // The names sit inside the rim, toward the centre of the dial.
+        val dir = Offset(if (left) -cos(ang) else cos(ang), -sin(ang))
+        // While Detent listens, the voice swells the marks.
+        drawMark(m, pal, k, Offset(x(px), py * k), dir, mod(i, tpa) == 0, a, fade, wave.swell(d))
+    }
+}
+
+/**
+ * One mark of a dial in the style of [m]. [p] is the mark on the rim in pixels, and [dir] is the unit vector from
+ * the rim toward the names. [a] is the distance from the notch in rows, [fade] the fade toward the end of the dial,
+ * and [v] the voice swell from 0 to 1. [alpha] fades the whole mark.
+ */
+internal fun DrawScope.drawMark(
+    m: Markers,
+    pal: Palette,
+    k: Float,
+    p: Offset,
+    dir: Offset,
+    major: Boolean,
+    a: Float,
+    fade: Float,
+    v: Float = 0f,
+    alpha: Float = 1f,
+) {
+    val hot = major && a < .5f
+    // A strong swell takes the accent colour.
+    val hue = (v * 1.4f).coerceIn(0f, 1f)
+    when (m) {
+        Markers.Ticks -> {
+            val w = (if (major) 14f else 6f) + v * 18f
+            drawLine(
+                lerp(if (major) pal.tickMaj else pal.tickMin, pal.accent, hue),
+                p,
+                p + dir * (w * k),
+                strokeWidth = k * (1 + v),
+                alpha = max(fade, hue) * alpha,
+            )
+        }
+        Markers.Double -> {
+            // Outer dots swell toward the notch. A fainter inner arc marks each app.
+            val f = max(0f, 1 - a / 3.6f)
+            val size = (if (hot) 9f else if (major) 3 + 5 * f else 2 + 2.6f * f) + v * (if (major) 8f else 4f)
+            drawCircle(
+                if (hot) pal.accent else lerp(pal.dotMaj, pal.accent, hue), size / 2 * k, p,
+                alpha = (if (hot) 1f else max((.3f + .7f * f) * fade, hue)) * alpha,
+            )
+            if (major) {
+                val s2 = 2.5f + 3 * f + v * 4f
                 drawCircle(
-                    if (hot) pal.accent else lerp(pal.dotMaj, pal.accent, hue), size / 2 * k, Offset(x(px), py * k),
-                    alpha = if (hot) 1f else max((.3f + .7f * f) * fade, hue),
+                    pal.dotMaj, s2 / 2 * k, p + dir * (16f * k),
+                    alpha = max((.25f + .5f * f) * fade, hue * .6f) * alpha,
                 )
-                if (major) {
-                    val ri = g.r - 16
-                    val s2 = 2.5f + 3 * f + v * 4f
-                    drawCircle(
-                        pal.dotMaj, s2 / 2 * k, Offset(x(g.cx - ri * cos(ang)), (g.cy + ri * sin(ang)) * k),
-                        alpha = max((.25f + .5f * f) * fade, hue * .6f),
-                    )
-                }
             }
-            else -> {
-                val size = (if (m == Markers.Nodes) (if (major) 6f else 2f) else (if (major) 4f else 2f)) + v * 6f
-                val c = when {
-                    hot -> pal.accent
-                    major -> pal.dotMaj
-                    m == Markers.Dots -> pal.dotMin
-                    else -> pal.nodeMin
-                }
-                drawCircle(if (hot) c else lerp(c, pal.accent, hue), size / 2 * k, Offset(x(px), py * k), alpha = max(fade, hue))
+        }
+        else -> {
+            val size = (if (m == Markers.Nodes) (if (major) 6f else 2f) else (if (major) 4f else 2f)) + v * 6f
+            val c = when {
+                hot -> pal.accent
+                major -> pal.dotMaj
+                m == Markers.Dots -> pal.dotMin
+                else -> pal.nodeMin
             }
+            drawCircle(if (hot) c else lerp(c, pal.accent, hue), size / 2 * k, p, alpha = max(fade, hue) * alpha)
         }
     }
 }
@@ -181,21 +206,29 @@ private fun DrawScope.drawLabels(
 
 /** The fixed notch at the selected row. It kicks 4 units outward on every detent. */
 private fun DrawScope.drawNotch(pawl: Float, g: Geo, k: Float, pal: Palette, m: Markers, left: Boolean) {
-    val off = (if (left) 1f else -1f) * pawl * 4f
-    fun x(v: Float) = ((if (left) W - v else v) + off) * k
-    val cy = g.cy * k
+    val rim = Offset((if (left) W - AX else AX) * k, g.cy * k)
+    drawNotchAt(m, pal, k, rim, Offset(if (left) -1f else 1f, 0f), pawl)
+}
+
+/**
+ * The notch of a dial in the style of [m]. [p] is the rim at the notch in pixels, and [dir] is the unit vector from
+ * the rim toward the names. The notch kicks 4 units away from the names on every detent.
+ */
+internal fun DrawScope.drawNotchAt(m: Markers, pal: Palette, k: Float, p: Offset, dir: Offset, pawl: Float, alpha: Float = 1f) {
+    val c = p - dir * (pawl * 4f * k)
+    fun along(units: Float) = c + dir * (units * k)
     when (m) {
-        Markers.Ticks -> drawRect(pal.accent, Offset(x(if (left) 242f else 204f), cy - k), Size(38 * k, 2 * k))
-        Markers.Nodes -> drawCircle(pal.accent, 9.25f * k, Offset(x(226f), cy), style = Stroke(1.5f * k))
+        Markers.Ticks -> drawLine(pal.accent, along(-22f), along(16f), strokeWidth = 2 * k, alpha = alpha)
+        Markers.Nodes -> drawCircle(pal.accent, 9.25f * k, c, style = Stroke(1.5f * k), alpha = alpha)
         Markers.Double -> {
-            drawCircle(pal.bg, 8f * k, Offset(x(226f), cy))
-            drawCircle(pal.accent, 5f * k, Offset(x(226f), cy))
+            drawCircle(pal.bg, 8f * k, c, alpha = alpha)
+            drawCircle(pal.accent, 5f * k, c, alpha = alpha)
         }
         Markers.Dots -> {
-            val centres = floatArrayOf(191.5f, 200f, 209.5f)
+            val offsets = floatArrayOf(-34.5f, -26f, -16.5f)
             val sizes = floatArrayOf(3f, 4f, 5f)
             val alphas = floatArrayOf(.45f, .7f, 1f)
-            for (i in 0..2) drawCircle(pal.accent, sizes[i] / 2 * k, Offset(x(centres[i]), cy), alpha = alphas[i])
+            for (i in 0..2) drawCircle(pal.accent, sizes[i] / 2 * k, along(offsets[i]), alpha = alphas[i] * alpha)
         }
     }
 }
