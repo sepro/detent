@@ -80,9 +80,8 @@ class SoundService : Service() {
             Sound.preset.value = SoundPreset.Off
         }
         val next = prefs.soundPreset
-        // Every start from startForegroundService must reach startForeground, or Android stops the whole app.
-        // The preset can turn off between that call and this one, so the service enters the foreground first,
-        // and only then leaves when there is nothing to play.
+        // The service enters the foreground before anything else, while the home screen that started it is still in
+        // front, and only then leaves when the preset turned off in the meantime.
         if (!enterForeground(next) || next == SoundPreset.Off) {
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()

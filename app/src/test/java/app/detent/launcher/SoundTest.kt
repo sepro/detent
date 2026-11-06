@@ -5,6 +5,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 class SoundTest {
     @Test fun everyPresetHasAGainForEachBand() = SoundPreset.entries.forEach {
@@ -55,6 +57,10 @@ class SoundTest {
         assertEquals((-PI / 2).toFloat(), soundAngle(50f, 100f, 100f, 100f), 1e-5f)
     }
 
+    // A dial on the left edge is the mirror image, so its notch sits at half past ten.
+    @Test fun leftDialMirrorsTheAngle() =
+        assertEquals((PI / 2).toFloat(), soundAngle(50f, 100f, 100f, 100f, left = true), 1e-5f)
+
     @Test fun wrapKeepsATurnAcrossTheBottomSmall() {
         assertEquals(-.2f, wrapAngle((2 * PI).toFloat() - .2f), 1e-5f)
         assertEquals(.2f, wrapAngle(.2f - (2 * PI).toFloat()), 1e-5f)
@@ -69,32 +75,50 @@ class SoundTest {
         assertTrue(softClamp(6.2f, 6) < softClamp(6.4f, 6))
     }
 
+    /** A point [r] units from the hub at (200, 800), [rows] rows clockwise from the notch. */
+    private fun pointAt(rows: Float, r: Float = SOUND_R + 60f, left: Boolean = false): Pair<Float, Float> {
+        val ang = SOUND_NOTCH + rows * SOUND_STEP
+        val dx = r * sin(ang)
+        return (if (left) 200f - dx else 200f + dx) to 800f - r * cos(ang)
+    }
+
     @Test fun tapOnANameFindsItsRow() {
-        // The dial sits on row 2. One row clockwise is one step to the right of the notch.
-        val ang = SOUND_STEP
-        val r = SOUND_R + 40f
-        val x = 200f + r * kotlin.math.sin(ang)
-        val y = 800f - r * kotlin.math.cos(ang)
+        // The dial sits on row 2, so the name one row clockwise from the notch is row 3.
+        val (x, y) = pointAt(1f)
         assertEquals(3, soundRowAt(x, y, 200f, 800f, pos = 2f))
+    }
+
+    @Test fun tapOnTheNotchFindsTheSelectedRow() {
+        val (x, y) = pointAt(0f)
+        assertEquals(2, soundRowAt(x, y, 200f, 800f, pos = 2f))
+    }
+
+    @Test fun tapOnALeftDialFindsTheMirroredRow() {
+        val (x, y) = pointAt(1f, left = true)
+        assertEquals(3, soundRowAt(x, y, 200f, 800f, pos = 2f, left = true))
+    }
+
+    // The names point outward, so a tap near the outer end of a long name still counts.
+    @Test fun tapOnTheEndOfANameFindsItsRow() {
+        val (x, y) = pointAt(0f, r = SOUND_R + 180f)
+        assertEquals(2, soundRowAt(x, y, 200f, 800f, pos = 2f))
     }
 
     @Test fun tapOnTheHubIsNoRow() = assertNull(soundRowAt(205f, 795f, 200f, 800f, pos = 2f))
 
     @Test fun tapPastTheLastPresetIsNoRow() {
-        val ang = 2 * SOUND_STEP
-        val r = SOUND_R + 40f
-        assertNull(soundRowAt(200f + r * kotlin.math.sin(ang), 800f - r * kotlin.math.cos(ang), 200f, 800f, pos = SOUND_LAST.toFloat()))
+        val (x, y) = pointAt(1f)
+        assertNull(soundRowAt(x, y, 200f, 800f, pos = SOUND_LAST.toFloat()))
     }
 
-    // Two neighbouring names never touch, even with the longest name in the notch at its full scale.
+    // The names stand at right angles to the rim, so neighbours need room for their height, not their length.
     @Test fun neighbouringNamesHaveRoom() {
-        val names = SoundPreset.entries.map { it.label }
-        // The nodes and dots layouts put the names closest to the rim, where the room is least.
-        val labelRadius = SOUND_R + labelInset(Markers.Nodes) + 9f * SOUND_SEL_SCALE
-        val room = labelRadius * SOUND_STEP
-        names.zipWithNext().forEach { (a, b) ->
-            val widest = maxOf(a.length * CH * SOUND_SEL_SCALE / 2 + b.length * CH / 2, a.length * CH / 2 + b.length * CH * SOUND_SEL_SCALE / 2)
-            assertTrue("$a and $b", widest < room)
-        }
+        val height = 15f * 1.2f
+        val selected = labelScale(0f, SoundPreset.entries.minOf { it.label.length })
+        val room = (SOUND_R + Markers.entries.minOf { soundLabelInset(it) }) * SOUND_STEP
+        assertTrue(height * selected / 2 + height / 2 < room)
     }
+
+    // A name leaning past straight up would read upside down, so the names fade out before they get there.
+    @Test fun namesFadeOutBeforeTheyTurnOver() = assertTrue(SOUND_NOTCH - SOUND_SPAN * SOUND_STEP > -PI.toFloat() / 6)
 }
