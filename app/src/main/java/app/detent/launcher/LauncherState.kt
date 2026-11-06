@@ -114,6 +114,12 @@ interface Host {
 
     /** Deletes saved wallpapers except [keep]. */
     fun cleanWallpapers(keep: String?)
+
+    /** Starts the sound service with the saved preset, or stops it for [SoundPreset.Off]. */
+    fun applySound(preset: SoundPreset)
+
+    /** Asks to show notifications, so that the equalizer notification shows. */
+    fun askNotifications()
 }
 
 private class Drag(val x0: Float, val y0: Float, var y: Float, val t0: Long, val zone: Zone) {
@@ -251,7 +257,7 @@ class LauncherState(
         private set
     var lockWall by mutableStateOf(prefs.lockWall)
         private set
-    var mic by mutableStateOf(prefs.mic)
+    var dockButton by mutableStateOf(prefs.dockButton)
         private set
     var corner by mutableStateOf(prefs.corner)
         private set
@@ -289,6 +295,8 @@ class LauncherState(
         repo.names = prefs.names
         repo.onLoaded = ::appsLoaded
         scope.launch { Unread.state.collect { unread = it } }
+        scope.launch { Sound.preset.collect { p -> if (p != null) soundPreset = p } }
+        scope.launch { Sound.reach.collect { soundReach = it } }
         scope.launch {
             while (isActive) {
                 now = System.currentTimeMillis()
@@ -339,6 +347,7 @@ class LauncherState(
         now = System.currentTimeMillis()
         notifAccess = host.hasNotificationAccess()
         isHome = host.isDefaultHome()
+        resumeSound()
         val o = open ?: return
         // Back from an app: the name drops back into the dial.
         if (o.phase != Phase.Out) {
@@ -362,10 +371,12 @@ class LauncherState(
         closeSearchMenu()
         // The microphone stays on only while Detent is in front.
         if (hear != null) closeVoice()
+        closeSound(silent = true)
     }
 
     /** The home button while the launcher is already in front. */
     fun onHome() {
+        closeSound()
         if (menu != null) closeMenu()
         if (search) closeSearch()
         if (hear != null) closeVoice()
@@ -374,6 +385,7 @@ class LauncherState(
     fun back() {
         when {
             open != null -> close()
+            soundOpen -> closeSound()
             hear != null -> closeVoice()
             menu != null -> closeMenu()
             searchMenu != null -> closeSearchMenu()
@@ -492,7 +504,7 @@ class LauncherState(
     // Gestures. All coordinates are design units.
 
     private fun blocked() =
-        open != null || search || hear != null || menu != null || ob == Step.WELCOME || ob == Step.APPS
+        open != null || search || hear != null || menu != null || soundOpen || ob == Step.WELCOME || ob == Step.APPS
 
     private fun mirX(x: Float) = if (left) W - x else x
 
@@ -847,10 +859,10 @@ class LauncherState(
         }
     }
 
-    fun toggleMic() {
+    fun pickDockButton(b: DockButton) {
         tap()
-        mic = !mic
-        prefs.mic = mic
+        dockButton = b
+        prefs.dockButton = b
     }
 
     fun pickCorner(c: Corner) {
@@ -1538,6 +1550,198 @@ class LauncherState(
         }
     }
 
+    // Equalizer: the button between apps and the corner opens a small dial of sound presets around itself.
+    // Turn it like the app dial. The preset in the notch plays as soon as the dial stops.
+
+    /** The preset that plays now. */
+    var soundPreset by mutableStateOf(prefs.soundPreset)
+        private set
+    var soundReach by mutableStateOf(SoundReach.Idle)
+        private set
+    /** True while the sound dial shows. */
+    var soundOpen by mutableStateOf(false)
+        private set
+    /** The sound dial position in rows. Row 0 is the first preset. */
+    var soundPos by mutableFloatStateOf(0f)
+        private set
+    /** The kick of the sound dial notch on each detent, from 1 down to 0. */
+    var soundPawl by mutableFloatStateOf(0f)
+        private set
+    /** Centre of the equalizer button in design units. The sound dial turns around it. The UI sets it. */
+    var soundHubX by mutableFloatStateOf(0f)
+    var soundHubY by mutableFloatStateOf(0f)
+
+    /** The preset in the notch. */
+    val soundSelected get() = SoundPreset.entries[soundPos.roundToInt().coerceIn(0, SOUND_LAST)]
+
+    private class SoundDrag(val x0: Float, val y0: Float, var angle: Float, val t0: Long) {
+        var moved = false
+        val samples = ArrayDeque<Pair<Long, Float>>()
+    }
+
+    private var soundDrag: SoundDrag? = null
+    /** The drag position before the soft stop at both ends. */
+    private var soundRaw = 0f
+    private var soundTarget = 0f
+    private var soundSettling = false
+    private var soundLastRow = 0
+    private var soundLoop: Job? = null
+
+    /** A tap on the equalizer button. */
+    fun soundTap() {
+        if (blocked()) return
+        tap()
+        val row = soundPreset.ordinal.toFloat()
+        soundRaw = row
+        soundPos = row
+        soundTarget = row
+        soundLastRow = soundPreset.ordinal
+        soundSettling = false
+        soundOpen = true
+    }
+
+    fun closeSound(silent: Boolean = false) {
+        if (!soundOpen) return
+        if (!silent) tap()
+        soundDrag = null
+        soundOpen = false
+        // A dial that still turns lands on the preset that it was turning to.
+        if (soundSettling) {
+            soundSettling = false
+            pickPreset(soundTarget.roundToInt())
+        }
+        // Without notifications, Android hides the equalizer notification and its off button. Ask once, after the
+        // first preset, when the user closes the dial. A silent close happens as Detent leaves the screen.
+        if (!silent && soundPreset != SoundPreset.Off && !prefs.askedNotifications) {
+            prefs.askedNotifications = true
+            host.askNotifications()
+        }
+    }
+
+    /** Back on the home screen: the preset may have changed in the notification, and the service may be gone. */
+    private fun resumeSound() {
+        soundPreset = prefs.soundPreset
+        // Each start of the service must reach the foreground within a few seconds, so start it only when it
+        // is not running already. A running service reports how far it reaches.
+        if (soundPreset != SoundPreset.Off && Sound.reach.value == SoundReach.Idle) host.applySound(soundPreset)
+    }
+
+    fun soundDown(x: Float, y: Float) {
+        if (!soundOpen) return
+        val d = SoundDrag(x, y, soundAngle(x, y, soundHubX, soundHubY), SystemClock.uptimeMillis())
+        d.samples.addLast(d.t0 to soundPos)
+        soundDrag = d
+        soundSettling = false
+        soundRaw = soundPos
+    }
+
+    fun soundMove(x: Float, y: Float) {
+        val d = soundDrag ?: return
+        if (!d.moved && hypot(x - d.x0, y - d.y0) > 6) d.moved = true
+        val angle = soundAngle(x, y, soundHubX, soundHubY)
+        // Close to the hub, a small move swings the angle a lot. The dial waits until the finger is further out.
+        if (hypot(x - soundHubX, y - soundHubY) < 24f) {
+            d.angle = angle
+            return
+        }
+        if (!d.moved) return
+        soundRaw -= wrapAngle(angle - d.angle) / SOUND_STEP
+        d.angle = angle
+        moveSoundTo(softClamp(soundRaw, SOUND_LAST))
+        val t = SystemClock.uptimeMillis()
+        d.samples.addLast(t to soundPos)
+        while (d.samples.size > 2 && t - d.samples.first().first > 90) d.samples.removeFirst()
+    }
+
+    fun soundUp(x: Float, y: Float) {
+        val d = soundDrag ?: return
+        soundDrag = null
+        val t = SystemClock.uptimeMillis()
+        if (!d.moved && t - d.t0 < 450) return soundTapAt(x, y)
+        // A flick carries the dial on a little, like the app dial, and the dial still stops on a preset.
+        val (t0, p0) = d.samples.first()
+        val vel = (soundPos - p0) / max(16f, (t - t0).toFloat())
+        settleSound((soundPos + vel * 180f).roundToInt())
+    }
+
+    fun soundCancel() {
+        soundDrag ?: return
+        soundDrag = null
+        settleSound(soundPos.roundToInt())
+    }
+
+    private fun soundTapAt(x: Float, y: Float) {
+        val row = soundRowAt(x, y, soundHubX, soundHubY, soundPos)
+        // The hub, the preset in the notch and the space around the dial all close it.
+        if (row == null || row == soundPos.roundToInt()) closeSound() else settleSound(row)
+    }
+
+    private fun soundKey(key: Key): Boolean {
+        when (key) {
+            Key.DirectionLeft, Key.DirectionUp, Key.K -> settleSound(soundTarget.roundToInt() - 1)
+            Key.DirectionRight, Key.DirectionDown, Key.J -> settleSound(soundTarget.roundToInt() + 1)
+            Key.Escape, Key.Enter -> closeSound()
+            else -> return false
+        }
+        return true
+    }
+
+    private fun settleSound(row: Int) {
+        soundTarget = row.coerceIn(0, SOUND_LAST).toFloat()
+        soundSettling = true
+        runSound()
+    }
+
+    /** Moves the sound dial. Each preset that passes the notch clicks and ticks. */
+    private fun moveSoundTo(p: Float) {
+        soundPos = p
+        val row = p.roundToInt().coerceIn(0, SOUND_LAST)
+        if (row != soundLastRow) {
+            soundLastRow = row
+            soundPawl = 1f
+            fb.click(false)
+            fb.tick()
+            runSound()
+        }
+    }
+
+    private fun runSound() {
+        if (soundLoop?.isActive == true) return
+        soundLoop = scope.launch {
+            var last = 0L
+            while (true) {
+                val t = withFrameMillis { it }
+                val dt = if (last == 0L) 16f else min(40f, (t - last).toFloat())
+                last = t
+                if (soundSettling) {
+                    val d = soundTarget - soundPos
+                    if (abs(d) < 0.002f) {
+                        soundSettling = false
+                        moveSoundTo(soundTarget)
+                        soundRaw = soundTarget
+                        pickPreset(soundTarget.roundToInt())
+                    } else {
+                        moveSoundTo(soundPos + d * (1 - 0.78f.pow(dt / 16f)))
+                    }
+                }
+                soundPawl *= 0.8f.pow(dt / 16f)
+                if (!soundSettling && soundPawl < 0.01f) {
+                    soundPawl = 0f
+                    break
+                }
+            }
+        }
+    }
+
+    private fun pickPreset(row: Int) {
+        val p = SoundPreset.entries[row.coerceIn(0, SOUND_LAST)]
+        if (p == soundPreset) return
+        soundPreset = p
+        prefs.soundPreset = p
+        Sound.preset.value = p
+        host.applySound(p)
+    }
+
     // Hardware keys: j and k turn the dial, l or enter opens, slash searches.
 
     fun key(key: Key): Boolean {
@@ -1552,6 +1756,7 @@ class LauncherState(
             if (key == Key.Escape) closeMenu()
             return key == Key.Escape
         }
+        if (soundOpen) return soundKey(key)
         if (search) {
             // Escape steps back like the back button: menu, then name field, then search.
             if (key == Key.Escape) back()

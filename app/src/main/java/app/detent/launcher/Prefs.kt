@@ -59,10 +59,20 @@ class Prefs(ctx: Context) {
         get() = sp.getString("customWall", null)?.takeIf { java.io.File(it).exists() }
         set(v) = sp.edit { putString("customWall", v) }
 
-    /** Shows the voice button on the home screen. */
-    var mic: Boolean
-        get() = sp.getBoolean("mic", true)
-        set(v) = sp.edit { putBoolean("mic", v) }
+    /** The button between apps and the corner button. Older setups saved only the "mic" switch. */
+    var dockButton: DockButton
+        get() = DockButton.of(sp.getString("dockButton", null), sp.getBoolean("mic", true))
+        set(v) = sp.edit { putString("dockButton", v.name.lowercase()) }
+
+    /** The equalizer preset. The sound service reads it too. */
+    var soundPreset: SoundPreset
+        get() = SoundPreset.of(sp.getString("soundPreset", null))
+        set(v) = sp.edit { putString("soundPreset", v.name.lowercase()) }
+
+    /** True once Detent asked to show notifications, so that it asks only once. */
+    var askedNotifications: Boolean
+        get() = sp.getBoolean("askedNotifications", false)
+        set(v) = sp.edit { putBoolean("askedNotifications", v) }
 
     /** What the corner button holds. */
     var corner: Corner

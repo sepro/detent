@@ -5,6 +5,12 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- The mic button. The microphone is on only while Detent listens. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- The equalizer. It puts an audio effect on the phone's sound output. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Keeps the equalizer on while you use other apps, with a notification while a preset is on. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Copies the theme to the lock screen and the system wallpaper. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- A home screen lists every launchable app and resolves the default apps for the first dial. -->
@@ -52,6 +58,15 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
+        </service>
+
+        <service
+            android:name=".SoundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the equalizer preset that the user picked on the phone's sound output." />
         </service>
     </application>
 </manifest>

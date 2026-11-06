@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import app.detent.launcher.Corner
+import app.detent.launcher.DockButton
 import app.detent.launcher.Ease
 import app.detent.launcher.LAYOUTS
 import app.detent.launcher.LauncherState
@@ -53,7 +54,7 @@ private fun copy(step: Int, custom: Boolean) = when (step) {
     else Copy("2 / 5", "theme", "turn the dial to try one. each brings its own wallpaper.")
     Step.APPS -> Copy("3 / 5", "apps", "pick what goes on the dial. the rest stay one search away.")
     Step.FEEL -> Copy("4 / 5", "feel", "a click and a tick for every detent. dots mark new notifications. the lock screen can use the theme.")
-    Step.DOCK -> Copy("5 / 5", "dock", "the mic opens an app by name. the corner holds an app, a web search, or nothing.")
+    Step.DOCK -> Copy("5 / 5", "dock", "the middle button opens an app by name or sets the sound. the corner holds an app, a web search, or nothing.")
     else -> Copy("", "ready", "hold the clock to change your setup. hold an app for shortcuts, or the dial to jump by letter.")
 }
 
@@ -135,7 +136,9 @@ fun Onboarding(s: LauncherState, pal: Palette, theme: ThemeDef) {
                 }
                 Step.DOCK -> {
                     Row(horizontalArrangement = gap) {
-                        Chip("mic", s.mic, pal, { s.toggleMic() })
+                        Chip("mic", s.dockButton == DockButton.Mic, pal, { s.pickDockButton(DockButton.Mic) })
+                        Chip("equalizer", s.dockButton == DockButton.Equalizer, pal, { s.pickDockButton(DockButton.Equalizer) })
+                        Chip("none", s.dockButton == DockButton.None, pal, { s.pickDockButton(DockButton.None) })
                     }
                     Row(horizontalArrangement = gap) {
                         Chip("quick app", s.corner == Corner.Quick, pal, { s.pickCorner(Corner.Quick) })
