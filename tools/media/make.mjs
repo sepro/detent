@@ -4,6 +4,7 @@
 //   node tools/media/make.mjs                 capture every scene, then frame it
 //   node tools/media/make.mjs search rename   only these scenes
 //   node tools/media/make.mjs --frame-only    frame the last screenshots again, without the emulator
+//   node tools/media/make.mjs --slow=8        wait 8 times longer at each step, for an emulator without acceleration
 //
 // It needs a running 1080x2400 emulator with a Google Play or Google APIs image (the "gym_pixel" AVD),
 // the debug build of Detent installed on it (./gradlew installDebug), and Chrome or Chromium.
@@ -60,11 +61,14 @@ const P = {
     selected: [800, 1262], // the app in the notch
     dial: [720, 1140], // the app above the notch: holding it scrubs letters
     apps: [175, 2205],
+    middle: [374, 2205], // the equalizer button, between apps and the corner button
     corner: [880, 2205],
+    clock: [250, 350], // holding it opens the setup
     next: [893, 2213],
 };
 
-// Each scene: the words in the frame, the app's settings, and the steps to the screen.
+// Each scene: the words in the frame, the app's settings, and the steps to the screen. "dock" sets the middle button
+// (the mic by default) and "preset" the equalizer preset.
 // A "hold" step keeps the finger down while the screenshot is taken. A scene "like" another frames its screenshot,
 // and "size" sets the frame in pixels (1280x720 by default).
 const SCENES = {
@@ -90,10 +94,21 @@ const SCENES = {
         title: "rename an app", sub: "call it what you like.", select: "yt music",
         steps: [["press", P.selected, 900], ["wait", 900], ["tapText", "rename"], ["wait", 1500], ["text", "music"], ["wait", 400], ["key", "BACK"], ["wait", 900]],
     },
+    sound: {
+        title: "tap the headphones", sub: "turn the sound to a preset.", select: "gmail", dock: "equalizer", preset: "bass",
+        steps: [["tap", P.middle], ["wait", 1500]],
+    },
+    // The setup opens on the shape step. The dock step is 4 steps on.
+    dock: {
+        title: "pick a button", sub: "the mic, the equalizer, or none.", select: "gmail", dock: "equalizer",
+        steps: [["press", P.clock, 900], ["wait", 3000], ...Array(4).fill([["tap", P.next], ["wait", 1500]]).flat(), ["wait", 600]],
+    },
 };
 
 const args = process.argv.slice(2);
 const frameOnly = args.includes("--frame-only");
+const slow = Number(args.find(a => a.startsWith("--slow="))?.slice(7) ?? 1);
+if (!(slow >= 1)) throw new Error("--slow takes a number of 1 or more, such as --slow=8");
 const names = args.filter(a => !a.startsWith("--"));
 for (const n of names) if (!SCENES[n]) throw new Error(`no scene "${n}". The scenes: ${Object.keys(SCENES).join(", ")}`);
 const scenes = names.length ? names : Object.keys(SCENES);
@@ -124,7 +139,7 @@ function adb(args, input) {
 }
 const sh = cmd => adb(["shell", cmd]).toString().trim();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const waitSync = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const waitSync = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms * slow);
 
 function capture(list) {
     if (!adb(["devices"]).toString().split("\n").slice(1).some(l => /\tdevice/.test(l))) throw new Error("no emulator is running");
@@ -142,8 +157,9 @@ function capture(list) {
     adb(["root"]);
     adb(["wait-for-device"]);
     try {
-        // Only the home app gets the app shortcuts that the hold menu shows.
-        sh(`cmd role add-role-holder android.app.role.HOME ${pkg}`);
+        // Only the home app gets the app shortcuts that the hold menu shows. On a slow emulator the role change
+        // can time out, so it runs only when Detent is not the home app yet.
+        if (saved.home !== pkg) sh(`cmd role add-role-holder android.app.role.HOME ${pkg}`);
         sh("settings put global auto_time 0");
         sh("settings put system time_12_24 24");
         // No clock, icons or notifications: frame.html draws its own status bar.
@@ -157,6 +173,8 @@ function capture(list) {
             sh(`am force-stop ${pkg}`);
             writePrefs(s.fresh ? freshPrefs() : prefs(s, dial, key));
             sh("date 103123302026.00");
+            // A slow run can outlast the screen timeout, and a screenshot of a sleeping screen is black.
+            sh("input keyevent WAKEUP");
             sh(`am start -W -n ${pkg}/.MainActivity`);
             waitSync(2000);
             run(name, s.steps);
@@ -183,7 +201,7 @@ function capture(list) {
             else if (kind === "tapText") tapText(a);
             else if (kind === "hold") {
                 // The finger stays down past the screenshot, which comes after b milliseconds.
-                held = spawn(ADB, ["shell", `input swipe ${a[0]} ${a[1]} ${a[0]} ${a[1]} ${b + 2500}`]);
+                held = spawn(ADB, ["shell", `input swipe ${a[0]} ${a[1]} ${a[0]} ${a[1]} ${b * slow + 2500}`]);
                 waitSync(b);
             }
         }
@@ -209,8 +227,19 @@ function readPrefs() {
     return r.status === 0 && r.stdout.toString().startsWith("<?xml") ? r.stdout.toString() : null;
 }
 
+// Through a file on the device: some adb versions hand the arguments of exec-in to the device shell unquoted,
+// so the "&&" and ">" in the command would run outside run-as.
 function writePrefs(xml) {
-    adb(["exec-in", "run-as", pkg, "sh", "-c", "mkdir -p shared_prefs && cat > shared_prefs/detent.xml"], xml);
+    const dir = mkdtempSync(join(tmpdir(), "detent-prefs-"));
+    try {
+        const file = join(dir, "detent.xml");
+        writeFileSync(file, xml);
+        adb(["push", file, "/data/local/tmp/detent.xml"]);
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+    sh(`run-as ${pkg} sh -c 'mkdir -p shared_prefs && cp /data/local/tmp/detent.xml shared_prefs/detent.xml'`);
+    sh("rm /data/local/tmp/detent.xml");
 }
 
 const x = v => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -226,6 +255,9 @@ function prefs(s, dial, key) {
     <int name="theme" value="${KOI}" />
     <string name="side">right</string>
     <string name="corner">web</string>
+    <string name="dockButton">${s.dock || "mic"}</string>
+    <string name="soundPreset">${s.preset || "off"}</string>
+    <boolean name="askedNotifications" value="true" />
     <boolean name="lockWall" value="false" />
     <boolean name="sound" value="false" />
     <int name="pos" value="${pos}" />
@@ -267,7 +299,10 @@ async function frame(list) {
     const profile = mkdtempSync(join(tmpdir(), "detent-media-"));
     const chrome = spawn(chromePath(), [
         "--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`,
-        "--allow-file-access-from-files", "--hide-scrollbars", "--force-color-profile=srgb", "about:blank",
+        "--allow-file-access-from-files", "--hide-scrollbars", "--force-color-profile=srgb",
+        // Chrome refuses to start as root with its sandbox on, as in a container.
+        ...(process.getuid?.() === 0 ? ["--no-sandbox"] : []),
+        "about:blank",
     ]);
     try {
         const port = await devtoolsPort(profile);

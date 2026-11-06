@@ -59,6 +59,10 @@ With a hardware keyboard, `j` and `k` turn the dial. `l` or `Enter` opens the ap
   <img src="docs/media/web.jpg" alt="Search the web. Your last searches sit below the field." width="49%">
   <img src="docs/media/rename.jpg" alt="Hold an app and tap rename to give it your own name." width="49%">
 </p>
+<p>
+  <img src="docs/media/sound.jpg" alt="Tap the headphones. A small dial of sound presets turns around the button." width="49%">
+  <img src="docs/media/dock.jpg" alt="On the dock step, pick the mic, the equalizer, or no middle button." width="49%">
+</p>
 
 ## Shapes and themes
 
@@ -177,7 +181,7 @@ The images in `docs/media` are screenshots from an emulator in a frame. To make 
 node tools/media/make.mjs
 ```
 
-Each scene is in `tools/media/make.mjs`, and the frame is `tools/media/frame.html`. To make some of the images, name their scenes, such as `node tools/media/make.mjs search rename`. To change only the frame, add `--frame-only`, and the script uses the last screenshots without the emulator.
+Each scene is in `tools/media/make.mjs`, and the frame is `tools/media/frame.html`. To make some of the images, name their scenes, such as `node tools/media/make.mjs search rename`. To change only the frame, add `--frame-only`, and the script uses the last screenshots without the emulator. On a slow emulator, such as one without hardware acceleration, add `--slow=8` to wait 8 times longer at each step.
 
 ## Release
 
