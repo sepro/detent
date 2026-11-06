@@ -351,8 +351,9 @@ private fun Clock(s: LauncherState, pal: Palette) {
     val ctx = LocalContext.current
     val alpha by animateFloatAsState(
         when {
-            s.ob != null -> 0f
-            s.scrub != null || s.soundOpen -> .25f
+            // The equalizer's veil covers the clock. A dimmed clock under it shows only in patches, so it goes.
+            s.ob != null || s.soundOpen -> 0f
+            s.scrub != null -> .25f
             else -> 1f
         },
         tween(400), label = "clockAlpha",
