@@ -28,7 +28,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import app.detent.launcher.ui.DetentRoot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -288,7 +287,10 @@ class MainActivity : ComponentActivity(), Host {
             return
         }
         try {
-            ContextCompat.startForegroundService(this, intent)
+            // Detent starts the service only while it is on the screen, where a plain start is allowed. A start
+            // with startForegroundService would have to reach the foreground within 10 seconds, and a slow first
+            // frame on a cold start can hold up the main thread for longer, which stops the whole app.
+            startService(intent)
         } catch (e: IllegalStateException) {
             // Android refuses to start a service from the background. The home screen tries again on resume.
         }

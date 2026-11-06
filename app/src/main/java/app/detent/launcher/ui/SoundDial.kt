@@ -43,15 +43,15 @@ import app.detent.launcher.Markers
 import app.detent.launcher.Palette
 import app.detent.launcher.SOUND_LAST
 import app.detent.launcher.SOUND_R
-import app.detent.launcher.SOUND_SEL_SCALE
+import app.detent.launcher.SOUND_NOTCH
 import app.detent.launcher.SOUND_SPAN
 import app.detent.launcher.SOUND_STEP
 import app.detent.launcher.SoundPreset
 import app.detent.launcher.SoundReach
-import app.detent.launcher.labelInset
+import app.detent.launcher.labelScale
+import app.detent.launcher.soundLabelInset
 import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
 
@@ -63,7 +63,7 @@ private const val HUB_R = 22f
 
 /**
  * The sound dial: the equalizer presets on a small dial around the equalizer button, in the style of the layout.
- * The notch sits straight up. The names sit outside the rim and follow its curve.
+ * The notch sits at half past one, and the names point outward from the rim.
  */
 @Composable
 fun SoundDialView(s: LauncherState, pal: Palette) {
@@ -131,54 +131,57 @@ private fun SoundRing(s: LauncherState, pal: Palette, t: Float) {
         val pos = s.soundPos
         val r = HUB_R + 8f + (SOUND_R - HUB_R - 8f) * t
         val spread = .45f + .55f * t
-        // Angles run clockwise from straight up, so the outward unit vector is (sin, -cos).
-        fun outward(ang: Float) = Offset(sin(ang), -cos(ang))
-        fun at(rad: Float, ang: Float) = Offset((hx + rad * sin(ang)) * k, (hy - rad * cos(ang)) * k)
+        val left = s.left
+        // The unit vector from the hub outward at angle [ang]. A dial on the left edge mirrors it.
+        fun outward(ang: Float) = Offset(if (left) -sin(ang) else sin(ang), -cos(ang))
+        fun at(rad: Float, ang: Float) = Offset(hx * k, hy * k) + outward(ang) * (rad * k)
 
         if (m == Markers.Ticks || m == Markers.Nodes) {
             drawCircle(pal.rim, r * k, Offset(hx * k, hy * k), style = Stroke(k), alpha = t)
         }
-        // Marks run from the first preset to the last. The ends of the dial show where it stops.
+        // Marks run from the first preset to the last. The ends of the dial show where it stops. As on the app dial,
+        // the ticks and the inner arc point toward the centre.
         for (i in 0..SOUND_LAST * tpa) {
             val d = i.toFloat() / tpa - pos
             val a = abs(d)
             if (a > SOUND_SPAN) continue
-            val ang = d * SOUND_STEP * spread
+            val ang = SOUND_NOTCH + d * SOUND_STEP * spread
             val fade = (1 - a / SOUND_SPAN).pow(.8f)
-            drawMark(m, pal, k, at(r, ang), outward(ang), i % tpa == 0, a, fade, alpha = t)
+            drawMark(m, pal, k, at(r, ang), -outward(ang), i % tpa == 0, a, fade, alpha = t)
         }
 
         SoundPreset.entries.forEachIndexed { i, preset ->
             val d = i - pos
             val a = abs(d)
             if (a >= SOUND_SPAN) return@forEachIndexed
-            val cl = max(0f, 1 - a)
-            val sel = cl > .5f
-            val scale = 1 + (SOUND_SEL_SCALE - 1) * cl * cl
+            val sel = a < .5f
+            val scale = labelScale(a, preset.label.length)
             // The names keep their final places, so they never crowd on the small rim while it grows. They fade
             // in over the second half and slide out a little, so they arrive just after the marks.
             val arrive = ((t - .4f) / .6f).coerceIn(0f, 1f)
             val op = (1 - a / SOUND_SPAN).pow(1.35f) * arrive * arrive
             if (op < .004f) return@forEachIndexed
             val text = measurer.measure(preset.label, if (sel) medium else regular)
-            val ang = d * SOUND_STEP
-            val halfHeight = text.size.height / k / 2f * scale
-            val centre = at(SOUND_R + labelInset(m) + halfHeight - 14f * (1 - arrive), ang)
+            val ang = SOUND_NOTCH + d * SOUND_STEP
+            val start = at(SOUND_R + soundLabelInset(m) - 14f * (1 - arrive), ang)
+            // A name stands at right angles to the rim and reads outward. On the left edge it reads toward the rim
+            // and ends there, the way the app dial mirrors its names.
+            val deg = Math.toDegrees(ang.toDouble()).toFloat()
             withTransform({
-                translate(centre.x, centre.y)
-                rotate(Math.toDegrees(ang.toDouble()).toFloat(), Offset.Zero)
+                translate(start.x, start.y)
+                rotate(if (left) 90f - deg else deg - 90f, Offset.Zero)
                 scale(scale, scale, Offset.Zero)
             }) {
                 drawText(
                     text,
                     color = if (sel) pal.accent else pal.fg,
-                    topLeft = Offset(-text.size.width / 2f, -text.size.height / 2f),
+                    topLeft = Offset(if (left) -text.size.width.toFloat() else 0f, -text.size.height / 2f),
                     alpha = op,
                 )
             }
         }
 
-        drawNotchAt(m, pal, k, at(r, 0f), outward(0f), s.soundPawl, alpha = t)
+        drawNotchAt(m, pal, k, at(r, SOUND_NOTCH), -outward(SOUND_NOTCH), s.soundPawl, alpha = t)
     }
 }
 
@@ -206,8 +209,9 @@ private fun SoundCaption(s: LauncherState, pal: Palette, t: Float) {
         else -> ""
     }
     SideBox(
-        // Just above the highest name on the dial.
-        s.left, s.soundHubY - SOUND_R - 150f, 28f,
+        // Above the names. A long name one row before the notch reaches about 245 units above the button, and the
+        // caption is up to about 75 units tall.
+        s.left, s.soundHubY - SOUND_R - 225f, 28f,
         Modifier.graphicsLayer { alpha = t; translationY = (1 - t) * 6f * u.k },
     ) {
         Column(

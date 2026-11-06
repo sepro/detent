@@ -1621,14 +1621,13 @@ class LauncherState(
     /** Back on the home screen: the preset may have changed in the notification, and the service may be gone. */
     private fun resumeSound() {
         soundPreset = prefs.soundPreset
-        // Each start of the service must reach the foreground within a few seconds, so start it only when it
-        // is not running already. A running service reports how far it reaches.
+        // Start the service only when it is not running already. A running service reports how far it reaches.
         if (soundPreset != SoundPreset.Off && Sound.reach.value == SoundReach.Idle) host.applySound(soundPreset)
     }
 
     fun soundDown(x: Float, y: Float) {
         if (!soundOpen) return
-        val d = SoundDrag(x, y, soundAngle(x, y, soundHubX, soundHubY), SystemClock.uptimeMillis())
+        val d = SoundDrag(x, y, soundAngle(x, y, soundHubX, soundHubY, left), SystemClock.uptimeMillis())
         d.samples.addLast(d.t0 to soundPos)
         soundDrag = d
         soundSettling = false
@@ -1638,7 +1637,7 @@ class LauncherState(
     fun soundMove(x: Float, y: Float) {
         val d = soundDrag ?: return
         if (!d.moved && hypot(x - d.x0, y - d.y0) > 6) d.moved = true
-        val angle = soundAngle(x, y, soundHubX, soundHubY)
+        val angle = soundAngle(x, y, soundHubX, soundHubY, left)
         // Close to the hub, a small move swings the angle a lot. The dial waits until the finger is further out.
         if (hypot(x - soundHubX, y - soundHubY) < 24f) {
             d.angle = angle
@@ -1671,7 +1670,7 @@ class LauncherState(
     }
 
     private fun soundTapAt(x: Float, y: Float) {
-        val row = soundRowAt(x, y, soundHubX, soundHubY, soundPos)
+        val row = soundRowAt(x, y, soundHubX, soundHubY, soundPos, left)
         // The hub, the preset in the notch and the space around the dial all close it.
         if (row == null || row == soundPos.roundToInt()) closeSound() else settleSound(row)
     }

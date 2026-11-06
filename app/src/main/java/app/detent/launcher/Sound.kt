@@ -67,34 +67,46 @@ enum class SoundPreset(
     }
 }
 
-// The sound dial turns around the equalizer button. Its rim is much tighter than the app dial.
+// The sound dial turns around the equalizer button. Its rim is much tighter than the app dial. As on the app dial,
+// the marks sit on the rim and point inward, and the names stand at right angles to the rim. The button leaves no
+// room inside, so the names point outward from the rim.
+//
+// Angles run clockwise from straight up for a dial on the right edge. A dial on the left edge mirrors them.
 
 /** Radius of the sound dial rim in design units. */
 const val SOUND_R = 112f
 
-/**
- * Angle between two presets in radians: 34 degrees. The names follow the curve of the rim, so they need more
- * room along it than the names on the app dial, which point toward its centre.
- */
-const val SOUND_STEP = (34 * PI / 180).toFloat()
+/** Angle between two presets in radians. One row has the same arc length on the rim as on the app dial. */
+const val SOUND_STEP = GAP / SOUND_R
 
-/** The preset in the notch grows to this scale. Less than on the app dial, so it never touches its neighbours. */
-const val SOUND_SEL_SCALE = 1.3f
+/** Angle of the notch: half past one, where a name pointing outward still reads at a slant. */
+const val SOUND_NOTCH = (PI / 4).toFloat()
 
 /**
- * Presets fade out this many rows from the notch. The button sits close to the screen edge, so the names fade out
- * at 80 degrees, before they turn sideways at the edge.
+ * Presets fade out this many rows from the notch. Names past straight up would lean over and read upside down, so
+ * they fade out about 69 degrees from the notch.
  */
-const val SOUND_SPAN = 1.4f / SOUND_STEP
+const val SOUND_SPAN = 1.2f / SOUND_STEP
 
 /** The last row on the sound dial. A getter, since the presets read this file's limits as they start. */
 val SOUND_LAST: Int get() = SoundPreset.entries.size - 1
 
 /**
- * Angle of the point ([x], [y]) around the hub at ([hx], [hy]), clockwise from straight up. The notch sits
- * straight up, at angle 0.
+ * The gap between the rim and the names on the sound dial in the style of [m]. The names start just past the notch,
+ * which reaches outside the rim on the ticks and dots layouts.
  */
-fun soundAngle(x: Float, y: Float, hx: Float, hy: Float) = atan2(x - hx, hy - y)
+fun soundLabelInset(m: Markers) = when (m) {
+    Markers.Ticks -> 30f
+    Markers.Dots -> 44f
+    else -> 22f
+}
+
+/**
+ * Angle of the point ([x], [y]) around the hub at ([hx], [hy]), clockwise from straight up. A dial on the [left]
+ * edge mirrors the angle, so that both sides turn the same way in their own frame.
+ */
+fun soundAngle(x: Float, y: Float, hx: Float, hy: Float, left: Boolean = false) =
+    atan2(if (left) hx - x else x - hx, hy - y)
 
 /** [a] wrapped to the range from -PI to PI, so that a turn across straight down does not jump a full circle. */
 fun wrapAngle(a: Float): Float {
@@ -116,13 +128,13 @@ fun softClamp(raw: Float, last: Int, give: Float = .35f): Float = when {
 
 /**
  * The preset row under a tap at ([x], [y]), or null when the tap misses the ring of names. The dial sits at
- * [pos] around the hub at ([hx], [hy]).
+ * [pos] around the hub at ([hx], [hy]), on the [left] or right edge.
  */
-fun soundRowAt(x: Float, y: Float, hx: Float, hy: Float, pos: Float): Int? {
+fun soundRowAt(x: Float, y: Float, hx: Float, hy: Float, pos: Float, left: Boolean = false): Int? {
     val dist = hypot(x - hx, y - hy)
-    // The names sit outside the rim. A tap near the rim or on a name counts, while the hub itself does not.
-    if (dist < SOUND_R - 40f || dist > SOUND_R + 120f) return null
-    val row = (pos + soundAngle(x, y, hx, hy) / SOUND_STEP).roundToInt()
+    // The names point outward from the rim. A tap near the rim or on a name counts, while the hub itself does not.
+    if (dist < SOUND_R - 40f || dist > SOUND_R + 210f) return null
+    val row = (pos + (soundAngle(x, y, hx, hy, left) - SOUND_NOTCH) / SOUND_STEP).roundToInt()
     if (row !in 0..SOUND_LAST || abs(row - pos) > SOUND_SPAN) return null
     return row
 }
