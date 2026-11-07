@@ -183,6 +183,14 @@ node tools/media/make.mjs
 
 Each scene is in `tools/media/make.mjs`, and the frame is `tools/media/frame.html`. To make some of the images, name their scenes, such as `node tools/media/make.mjs search rename`. To change only the frame, add `--frame-only`, and the script uses the last screenshots without the emulator. On a slow emulator, such as one without hardware acceleration, add `--slow=8` to wait 8 times longer at each step.
 
+### App icon
+
+The app icon is the `soft · radial · double` dial in the koi-watercolor colours. The script `tools/icon/make.py` draws it and writes the 3 layers of the Android icon and the site icon, `docs/icon.svg`. To change the icon, edit the script and run it. It needs Python 3 and no other packages.
+
+```sh
+python3 tools/icon/make.py
+```
+
 ## Release
 
 The `build` workflow builds the APK on each push and pull request. You can download that APK from the workflow run.
