@@ -127,7 +127,9 @@ fun Txt(
 @Composable
 fun SideBox(left: Boolean, top: Float, margin: Float, modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     val u = LocalUnits.current
-    Box(modifier.fillMaxWidth().place(u, 0f, top).padding(horizontal = u.dp(margin))) {
+    // The offset comes before the caller's modifier, so that a graphicsLayer in it moves with the content. Behind
+    // the offset, the layer would stay at the top of the screen, and while it fades, everything outside it is cut.
+    Box(Modifier.place(u, 0f, top).then(modifier).fillMaxWidth().padding(horizontal = u.dp(margin))) {
         Box(Modifier.align(if (left) Alignment.TopEnd else Alignment.TopStart), content = content)
     }
 }
