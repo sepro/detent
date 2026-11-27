@@ -55,11 +55,11 @@ fun DialCanvas(s: LauncherState, pal: Palette, wave: VoiceWave) {
     val hide = if (o != null && o.fromDial && dots != null) apps.indexOfFirst { it.key == o.key } else -1
     val layout = s.layout
     val left = s.left
-    // The app dial steps back behind the sound dial, so the two never compete.
+    // The app dial leaves while the sound dial is open. Dimmed, its names showed through the veil and muddled the presets.
     val alpha by animateFloatAsState(
         when {
             s.ob == Step.WELCOME || s.ob == Step.APPS -> 0f
-            s.soundOpen -> .2f
+            s.soundOpen -> 0f
             else -> 1f
         },
         tween(if (s.soundOpen) 250 else 500), label = "dialAlpha",

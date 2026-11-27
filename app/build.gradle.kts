@@ -17,7 +17,7 @@ android {
         targetSdk = 36
         // CI passes the tag as -PdetentVersion and the run number as -PdetentCode.
         versionCode = providers.gradleProperty("detentCode").orNull?.toInt() ?: 1
-        versionName = providers.gradleProperty("detentVersion").orNull ?: "0.1.0"
+        versionName = providers.gradleProperty("detentVersion").orNull ?: "1.1.5"
     }
 
     signingConfigs {

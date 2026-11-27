@@ -9,8 +9,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -417,6 +419,25 @@ private fun Heard(s: LauncherState, pal: Palette, modifier: Modifier) {
 }
 
 /**
+ * Whether the buttons at the bottom show. An app that opens or closes is left out on purpose: coming back from an
+ * app, the closing animation still runs, and the buttons would fade in after it instead of being there already.
+ */
+private fun dockShown(s: LauncherState) = s.ob == null && !s.search && s.hear == null && s.scrub == null
+
+/**
+ * How far a bottom button has faded in, from 0 to 1. A change while Detent is out of sight (the sound dial closing
+ * as it leaves, say) lands at once, so nothing is still fading when you come back.
+ */
+@Composable
+private fun dockPresence(s: LauncherState, shown: Boolean, label: String, millis: Int = 300): Float {
+    val spec: AnimationSpec<Float> = if (s.resumed) tween(millis) else snap()
+    return animateFloatAsState(if (shown) 1f else 0f, spec, label = label).value
+}
+
+/** A bottom button sinks a little as it fades out. */
+private fun dockDrop(presence: Float) = (1 - presence) * 8f
+
+/**
  * The apps button, with the middle button between it and the corner button. [matchWidth] is the width of the
  * corner button in design units when the apps button should match it.
  */
@@ -424,12 +445,10 @@ private fun Heard(s: LauncherState, pal: Palette, modifier: Modifier) {
 private fun AppsButton(s: LauncherState, pal: Palette, matchWidth: Float?) {
     val u = LocalUnits.current
     val homeIdle = s.ob == null && !s.search && s.hear == null && s.open == null
-    val shown = homeIdle && s.scrub == null
-    val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "searchAlpha")
-    val dy by animateFloatAsState(if (shown) 0f else 8f, tween(300), label = "searchY")
+    val alpha = dockPresence(s, dockShown(s), "appsDock")
     // The sound dial turns around the equalizer button, so the button stays while the apps button steps back.
-    val appsAlpha by animateFloatAsState(if (s.soundOpen) 0f else 1f, tween(200), label = "appsAlpha")
-    SideBox(s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dy * u.k }) {
+    val appsAlpha = dockPresence(s, !s.soundOpen, "appsAlpha", millis = 200)
+    SideBox(s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dockDrop(alpha) * u.k }) {
         // The middle button sits between apps and the corner button.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(u.dp(10f))) {
             if (s.left) MiddleButton(s, pal, homeIdle)
@@ -515,13 +534,11 @@ private fun QuickButton(s: LauncherState, pal: Palette, onWidth: (Float) -> Unit
     val u = LocalUnits.current
     val homeIdle = s.ob == null && !s.search && s.hear == null && s.open == null
     val idle by rememberUpdatedState(homeIdle)
-    val shown = homeIdle && s.scrub == null && !s.soundOpen
-    val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "quickAlpha")
-    val dy by animateFloatAsState(if (shown) 0f else 8f, tween(300), label = "quickY")
+    val alpha = dockPresence(s, dockShown(s) && !s.soundOpen, "quickDock")
     val app = s.quickApp
     // The start and the centre of the label in design units. The name lifts off from here when the app opens.
     var label by remember { mutableStateOf(Offset.Zero) }
-    SideBox(!s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dy * u.k }) {
+    SideBox(!s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dockDrop(alpha) * u.k }) {
         val shape = RoundedCornerShape(50)
         Row(
             Modifier.onSizeChanged { onWidth(it.width / u.k) }
@@ -563,10 +580,8 @@ private fun QuickButton(s: LauncherState, pal: Palette, onWidth: (Float) -> Unit
 private fun WebButton(s: LauncherState, pal: Palette, onWidth: (Float) -> Unit) {
     val u = LocalUnits.current
     val homeIdle = s.ob == null && !s.search && s.hear == null && s.open == null
-    val shown = homeIdle && s.scrub == null && !s.soundOpen
-    val alpha by animateFloatAsState(if (shown) 1f else 0f, tween(300), label = "webAlpha")
-    val dy by animateFloatAsState(if (shown) 0f else 8f, tween(300), label = "webY")
-    SideBox(!s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dy * u.k }) {
+    val alpha = dockPresence(s, dockShown(s) && !s.soundOpen, "webDock")
+    SideBox(!s.left, u.searchY, 24f, Modifier.graphicsLayer { this.alpha = alpha; translationY = dockDrop(alpha) * u.k }) {
         val shape = RoundedCornerShape(50)
         Row(
             Modifier.onSizeChanged { onWidth(it.width / u.k) }
